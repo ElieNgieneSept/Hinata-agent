@@ -1899,12 +1899,11 @@ body.canvas-active .side-panel-toolbar {
     align-items: center;
     justify-content: center;
     gap: 16px;
-    opacity: 0.5;
+    opacity: 1;
 }
 
 .empty-chat-logo {
-    width: 80px;
-    height: 80px;
+    width: 210px;
 }
 
 .empty-chat-text {
