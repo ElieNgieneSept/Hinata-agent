@@ -285,7 +285,7 @@ html, body {
 }
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: 'Roboto', sans-serif;
     display: flex;
     height: 100vh;
     overflow: hidden;
@@ -1555,7 +1555,9 @@ body.canvas-active .side-panel-toolbar {
     }
 }
 
-/* --- Police du logo/titre : Jomhuria (Google Fonts, hébergée localement) --- */
+/* --- Polices du projet : Jomhuria (titre/charte) et Roboto (texte par défaut) ---
+   Les deux polices sont hébergées localement (Hinata/fonts/) pour garantir un
+   rendu identique chez tous les utilisateurs, sans dépendance système ni web. */
 @font-face {
     font-family: 'Jomhuria';
     src: url('../fonts/Jomhuria-Regular.ttf') format('truetype');
@@ -1564,8 +1566,24 @@ body.canvas-active .side-panel-toolbar {
     font-display: swap;
 }
 
+@font-face {
+    font-family: 'Roboto';
+    src: url('../fonts/Roboto-Variable.ttf') format('truetype');
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Roboto';
+    src: url('../fonts/Roboto-Italic-Variable.ttf') format('truetype');
+    font-weight: 100 900;
+    font-style: italic;
+    font-display: swap;
+}
+
 .sidebar-title {
-    font-family: 'Jomhuria', 'Segoe UI', sans-serif;
+    font-family: 'Jomhuria', 'Roboto', sans-serif;
     font-size: 2.9rem;
     font-weight: 400;
     margin-bottom: 0;
@@ -1578,12 +1596,12 @@ body.canvas-active .side-panel-toolbar {
 }
 
 .sidebar-logo {
-    width: 40px;
-    height: 40px;
+    width: 60px;
 }
 .version-badge {
-    font-size: 0.45em;
-    font-weight: 600;
+    font-family: 'Roboto';
+    font-size: 1.1rem;
+    font-weight: 400;
     opacity: 0.5;
     vertical-align: super;
 }
@@ -1594,8 +1612,9 @@ body.canvas-active .side-panel-toolbar {
     font-size: 0.65rem;
     color: var(--text-secondary);
     text-decoration: none;
-    margin-top: -6px;
-    margin-bottom: 8px;
+    margin-top: -26px;
+    margin-bottom: 28px;
+    margin-left: 20px;
     transition: color 0.15s;
 }
 
@@ -2878,7 +2897,7 @@ body.dark .custom-select-trigger-icon {
     font-size: 0.55rem;
     font-weight: 700;
     font-style: italic;
-    font-family: Georgia, serif;
+    font-family: 'Roboto', sans-serif;
     color: var(--text-secondary);
     cursor: default;
     margin-left: 8px;
@@ -2896,7 +2915,7 @@ body.dark .custom-select-trigger-icon {
     color: var(--tooltip-text);
     font-size: 0.7rem;
     font-weight: 400;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: 'Roboto', sans-serif;
     line-height: 1.45;
     padding: 8px 11px;
     border-radius: 6px;
