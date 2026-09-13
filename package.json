@@ -2,6 +2,10 @@
   "name": "hinata-desktop",
   "version": "0.1.0",
   "description": "Hinata desktop WebView",
+  "author": {
+    "name": "Sept Ngiene",
+    "email": "contact@eliesept.com"
+  },
   "main": "desktop/main.js",
   "scripts": {
     "start": "electron .",
@@ -15,6 +19,7 @@
   "build": {
     "appId": "com.eliesept.hinata",
     "productName": "Hinata",
+    "icon": "build/icon.icns",
     "files": [
       "desktop/**/*",
       "Hinata/**/*",

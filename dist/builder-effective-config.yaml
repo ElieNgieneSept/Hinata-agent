@@ -1,0 +1,14 @@
+directories:
+  output: dist
+  buildResources: build
+appId: com.eliesept.hinata
+productName: Hinata
+files:
+  - filter:
+      - desktop/**/*
+      - Hinata/**/*
+      - package.json
+mac:
+  category: public.app-category.productivity
+  target: dmg
+electronVersion: 38.8.6

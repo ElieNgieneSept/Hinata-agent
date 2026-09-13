@@ -2,7 +2,7 @@
 node_modules/
 
 # Builds Electron / packaging
-dist/
+# dist/ est autorisé pour distribuer le .dmg
 build/
 out/
 *.dmg
