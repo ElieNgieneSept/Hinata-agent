@@ -1,0 +1,37 @@
+# Node.js
+node_modules/
+
+# Builds Electron / packaging
+dist/
+build/
+out/
+*.dmg
+*.app
+*.pkg
+
+# Fichiers de données locaux de l'application (conversations, réglages, clés, etc.)
+Hinata/data/
+Hinata/historique/
+
+# macOS
+.DS_Store
+*.swp
+*~
+
+# Journaux et temporaires
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.cache/
+
+# Outils d'agent VS Code (non liés au projet)
+.kilo/
+
+# Clés API / secrets
+.env
+.env.*
+*.pem
+*.key
+!*.example
