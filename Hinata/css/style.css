@@ -1555,15 +1555,26 @@ body.canvas-active .side-panel-toolbar {
     }
 }
 
+/* --- Police du logo/titre : Jomhuria (Google Fonts, hébergée localement) --- */
+@font-face {
+    font-family: 'Jomhuria';
+    src: url('../fonts/Jomhuria-Regular.ttf') format('truetype');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
 .sidebar-title {
-    font-size: 2.2rem;
-    font-weight: 700;
+    font-family: 'Jomhuria', 'Segoe UI', sans-serif;
+    font-size: 2.9rem;
+    font-weight: 400;
     margin-bottom: 0;
     color: var(--text);
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
+    line-height: 1;
 }
 
 .sidebar-logo {

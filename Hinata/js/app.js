@@ -1,4 +1,4 @@
-const APP_VERSION = '3.2';
+const APP_VERSION = '0.1';
 const chatContainer = document.getElementById('chat-container');
 const promptInput = document.getElementById('prompt-input');
 const sendBtn = document.getElementById('send-btn');
