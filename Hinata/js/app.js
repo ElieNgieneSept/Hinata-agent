@@ -60,6 +60,8 @@ const enhancePromptBtn = document.getElementById('enhance-prompt-btn');
 const toolbarInsertBtn = document.getElementById('toolbar-insert-btn');
 const toolbarEnhanceBtn = document.getElementById('toolbar-enhance-btn');
 const toolbarSaveBtn = document.getElementById('toolbar-save-btn');
+const inputLine2Right = document.querySelector('.input-line-2-right');
+if (inputLine2Right && micBtn) inputLine2Right.insertBefore(toolbarInsertBtn, micBtn);
 
 const chatHeaderSettings = document.getElementById('chat-header-settings');
 const promptPickerDropdownWrapper = document.getElementById('prompt-picker-dropdown-wrapper');
@@ -130,6 +132,49 @@ catColorGrid.addEventListener('click', (e) => {
 
 const apikeysBtn = document.getElementById('apikeys-btn');
 const apikeysModalOverlay = document.getElementById('apikeys-modal-overlay');
+const globalMemoryEditor = document.getElementById('global-memory-editor');
+const globalMemoryAuto = document.getElementById('global-memory-auto');
+const globalMemoryStatus = document.getElementById('global-memory-status');
+const globalMemorySaveBtn = document.getElementById('global-memory-save-btn');
+const globalMemoryClearBtn = document.getElementById('global-memory-clear-btn');
+
+const GLOBAL_MEMORY_KEY = 'hinata-global-memory';
+const GLOBAL_MEMORY_INITIALIZED_KEY = 'hinata-global-memory-initialized';
+const GLOBAL_MEMORY_AUTO_KEY = 'hinata-global-memory-auto';
+const GLOBAL_MEMORY_USER_HEADING = '## CONTEXTE UTILISATEUR';
+const DEFAULT_GLOBAL_MEMORY = `# MÉMOIRE GLOBALE DE HINATA
+
+## CONFIGURATION PAR DÉFAUT DE HINATA
+
+### Mission
+- Comprendre précisément la demande avant d'agir.
+- Répondre en français, de façon claire, concise et utile.
+- Utiliser le contexte disponible, les préférences de l'utilisateur et les données déjà connues sans les inventer.
+
+### Méthode de travail
+- Identifier le chemin de code, la fonction ou le document qui contrôle réellement le comportement demandé.
+- Formuler une hypothèse vérifiable avant de modifier le projet.
+- Préférer les changements petits, locaux et compatibles avec l'existant.
+- Réutiliser les conventions, composants, formats de données et dépendances déjà présents.
+- Après chaque changement important, effectuer la vérification la plus ciblée disponible : test, syntaxe, lint, typecheck ou build.
+- Signaler clairement les hypothèses, les limites et les validations effectuées.
+
+### Qualité et sécurité
+- Ne jamais exposer, inventer ou mémoriser de clé API, mot de passe, token, cookie ou autre secret.
+- Respecter les données existantes, les identifiants historiques et les contrats publics.
+- Ne pas supprimer ou annuler des changements existants sans demande explicite.
+- Prendre en compte les erreurs, les cas limites, l'accessibilité, le responsive et la lisibilité lorsque la tâche concerne l'interface.
+- Privilégier une solution maintenable plutôt qu'une modification superficielle.
+
+### Collaboration
+- Poser une question uniquement lorsqu'une information manque réellement pour prendre une décision correcte.
+- Être direct, rigoureux et transparent sur ce qui a été fait.
+- Ne pas prétendre avoir exécuté une action ou validé un résultat lorsque ce n'est pas le cas.
+
+${GLOBAL_MEMORY_USER_HEADING}
+
+_Les informations stables sur l'utilisateur, ses habitudes, son expertise et ses besoins récurrents sont ajoutées ici._`;
+let globalMemoryUpdateInFlight = false;
 
 let currentModel = null;
 let currentImageModel = null;
@@ -1508,6 +1553,7 @@ function syncSideToolbarCanvasWidth() {
         document.body.style.setProperty('--side-toolbar-right', (w - 16) + 'px');
     }
 }
+
 if (window.ResizeObserver) {
     const _canvasPanel = document.getElementById('canvas-panel');
     if (_canvasPanel) {
@@ -2364,7 +2410,11 @@ function buildCanvasParserIfActive() {
 }
 
 function effectiveSystemPrompt(spContent) {
-    let sp = spContent || '';
+    const globalMemory = getGlobalMemory();
+    let sp = globalMemory
+        ? `[MÉMOIRE GLOBALE DE HINATA]\n${globalMemory}\n[/MÉMOIRE GLOBALE DE HINATA]`
+        : '';
+    if (spContent) sp += (sp ? '\n\n' : '') + spContent;
     const projectId = conversationId ? currentConversationCategory : activeCategoryId;
     const projectContext = typeof getCategoryContext === 'function'
         ? getCategoryContext(projectId)
@@ -2376,6 +2426,83 @@ function effectiveSystemPrompt(spContent) {
         sp = (sp ? sp + '\n\n' : '') + window.Canvas.buildSystemPromptSuffix();
     }
     return sp;
+}
+
+function getGlobalMemory() {
+    try {
+        const stored = localStorage.getItem(GLOBAL_MEMORY_KEY);
+        if (stored === null && localStorage.getItem(GLOBAL_MEMORY_INITIALIZED_KEY) !== '1') {
+            localStorage.setItem(GLOBAL_MEMORY_KEY, DEFAULT_GLOBAL_MEMORY);
+            localStorage.setItem(GLOBAL_MEMORY_INITIALIZED_KEY, '1');
+            return DEFAULT_GLOBAL_MEMORY;
+        }
+        return String(stored || '').trim();
+    }
+    catch (_) { return ''; }
+}
+
+function splitGlobalMemory(content) {
+    const source = String(content || '').trim();
+    const markerIndex = source.indexOf(GLOBAL_MEMORY_USER_HEADING);
+    if (markerIndex < 0) {
+        return { defaults: source, userContext: '' };
+    }
+    return {
+        defaults: source.slice(0, markerIndex).trim(),
+        userContext: source.slice(markerIndex + GLOBAL_MEMORY_USER_HEADING.length).trim()
+    };
+}
+
+function composeGlobalMemory(defaults, userContext) {
+    const base = String(defaults || '').trim();
+    const user = String(userContext || '').trim();
+    if (!base && !user) return '';
+    return `${base}${base ? `\n\n${GLOBAL_MEMORY_USER_HEADING}` : GLOBAL_MEMORY_USER_HEADING}${user ? `\n\n${user}` : ''}`.trim();
+}
+
+function saveGlobalMemory(content) {
+    const value = String(content || '').trim();
+    if (value) localStorage.setItem(GLOBAL_MEMORY_KEY, value);
+    else localStorage.removeItem(GLOBAL_MEMORY_KEY);
+    if (globalMemoryEditor) globalMemoryEditor.value = value;
+    if (globalMemoryStatus) globalMemoryStatus.textContent = 'Mémoire sauvegardée.';
+}
+
+function isGlobalMemoryAutoEnabled() {
+    return localStorage.getItem(GLOBAL_MEMORY_AUTO_KEY) !== '0';
+}
+
+function getGlobalMemoryUpdateModel(fallbackModel) {
+    return AUDIO_SETTINGS.summaryModel || fallbackModel || '';
+}
+
+async function updateGlobalMemoryAfterTurn(userContent, assistantContent, fallbackModel) {
+    if (!isGlobalMemoryAutoEnabled() || globalMemoryUpdateInFlight) return;
+    const modelId = getGlobalMemoryUpdateModel(fallbackModel);
+    if (!modelId) return;
+    const userText = getTextFromContent(userContent).trim().slice(-6000);
+    const assistantText = getTextFromContent(assistantContent).trim().slice(-8000);
+    if (!userText || !assistantText) return;
+
+    globalMemoryUpdateInFlight = true;
+    try {
+        const currentSections = splitGlobalMemory(getGlobalMemory());
+        const currentUserContext = currentSections.userContext.slice(-16000);
+        const prompt = `Tu gères uniquement la section « CONTEXTE UTILISATEUR » de la mémoire globale de Hinata. Mets à jour le contenu Markdown ci-dessous à partir du nouvel échange. Conserve uniquement les informations utiles, stables et explicitement déductibles sur l'utilisateur : nom, préférences de communication, expertise, contraintes, objectifs et besoins récurrents. Ne mémorise jamais de clé API, mot de passe, token, donnée bancaire ou secret. Ne conserve pas les détails ponctuels sans valeur future. Corrige les informations devenues obsolètes. Réponds uniquement avec le contenu de la section utilisateur, sans titre de section, commentaire ni bloc de code. Si aucune information durable n'est apportée, renvoie le contenu inchangé.\n\nCONTEXTE UTILISATEUR ACTUEL :\n${currentUserContext || '(vide)'}\n\nNOUVEL ÉCHANGE :\nUtilisateur : ${userText}\nAssistant : ${assistantText}`;
+        const result = await streamText(modelId, prompt);
+        const candidate = String(result?.text || '')
+            .replace(/^```(?:markdown|md)?\s*/i, '')
+            .replace(/\s*```$/i, '')
+            .replace(/^##\s*CONTEXTE UTILISATEUR\s*/i, '')
+            .trim();
+        if (candidate && candidate.length <= 30000) {
+            saveGlobalMemory(composeGlobalMemory(currentSections.defaults, candidate));
+        }
+    } catch (error) {
+        console.warn('Mémoire globale : actualisation impossible', error);
+    } finally {
+        globalMemoryUpdateInFlight = false;
+    }
 }
 
 /**
@@ -2436,72 +2563,23 @@ function updateEnhanceBtn() {
 
 let _toolbarMode = 'hidden'; // 'hidden' | 'insert' | 'enhance' | 'revert'
 
-// --- "Insérer un prompt" flottant (indépendant du mode enhance/save) ---
+// --- Bouton d'insertion de prompt ---
 let _insertBtnVisible = false;
 
-function _insertBtnTargetCoords() {
-    const center = toolbarInsertBtn.closest('.input-line-2-center');
-    const content = promptInput.closest('.input-content');
-    if (!center || !content) return null;
-    const centerRect = center.getBoundingClientRect();
-    const contentRect = content.getBoundingClientRect();
-    if (_lastClickX !== null && _lastClickY !== null) {
-        return {
-            left: (_lastClickX + contentRect.left - centerRect.left) + 'px',
-            top: (_lastClickY + contentRect.top - centerRect.top) + 'px'
-        };
-    }
-    return {
-        left: (contentRect.width / 2 + contentRect.left - centerRect.left) + 'px',
-        top: (contentRect.height + contentRect.top - centerRect.top) + 'px'
-    };
-}
-
 function showInsertBtn() {
-    const wasVisible = toolbarInsertBtn.style.display !== 'none' && !toolbarInsertBtn.classList.contains('floating');
-
-    if (wasVisible) {
-        // Le bouton est visible en bas → capturer sa position de départ, passer en floating, puis animer
-        const startRect = toolbarInsertBtn.getBoundingClientRect();
-        toolbarInsertBtn.style.transition = 'none';
-        toolbarInsertBtn.classList.add('floating');
-        // Calculer la destination maintenant que floating est actif
-        const target = _insertBtnTargetCoords();
-        if (target) {
-            // Placer le bouton à sa position de départ (en coordonnées du parent floating)
-            const center = toolbarInsertBtn.closest('.input-line-2-center');
-            if (center) {
-                const centerRect = center.getBoundingClientRect();
-                toolbarInsertBtn.style.left = (startRect.left + startRect.width / 2 - centerRect.left) + 'px';
-                toolbarInsertBtn.style.top = (startRect.bottom - centerRect.top) + 'px';
-            }
-            toolbarInsertBtn.offsetTop; // forcer le reflow
-            toolbarInsertBtn.style.transition = '';
-            toolbarInsertBtn.style.left = target.left;
-            toolbarInsertBtn.style.top = target.top;
-        }
-    } else {
-        // Le bouton n'était pas visible → apparition directe sans animation
-        toolbarInsertBtn.style.display = 'inline-flex';
-        toolbarInsertBtn.style.transition = 'none';
-        toolbarInsertBtn.classList.add('floating');
-        const target = _insertBtnTargetCoords();
-        if (target) {
-            toolbarInsertBtn.style.left = target.left;
-            toolbarInsertBtn.style.top = target.top;
-        }
-    }
+    toolbarInsertBtn.style.display = 'inline-flex';
+    toolbarInsertBtn.classList.remove('floating');
+    toolbarInsertBtn.style.left = '';
+    toolbarInsertBtn.style.top = '';
     _insertBtnVisible = true;
 }
 
 function hideInsertBtn() {
-    if (toolbarInsertBtn.classList.contains('floating')) {
-        toolbarInsertBtn.style.display = 'none';
-        toolbarInsertBtn.classList.remove('floating');
-        toolbarInsertBtn.style.left = '';
-        toolbarInsertBtn.style.top = '';
-        _insertBtnVisible = false;
-    }
+    toolbarInsertBtn.style.display = 'none';
+    toolbarInsertBtn.classList.remove('floating');
+    toolbarInsertBtn.style.left = '';
+    toolbarInsertBtn.style.top = '';
+    _insertBtnVisible = false;
 }
 
 function _applyToolbarMode(mode) {
@@ -4592,6 +4670,7 @@ function imageResultToContent(result) {
 // non vide (les API refusent un prompt vide, ex. message ne contenant qu'une image).
 function buildImagePrompt(text, history) {
     let imagePrompt = text;
+    const globalMemory = getGlobalMemory();
     const projectId = conversationId ? currentConversationCategory : activeCategoryId;
     const projectContext = typeof getCategoryContext === 'function'
         ? getCategoryContext(projectId)
@@ -4613,6 +4692,9 @@ function buildImagePrompt(text, history) {
     }
     if (projectContext) {
         imagePrompt = `Contexte général du projet :\n${projectContext}\n\n${imagePrompt || text || ''}`;
+    }
+    if (globalMemory) {
+        imagePrompt = `Mémoire globale de Hinata :\n${globalMemory}\n\n${imagePrompt || text || ''}`;
     }
     if (!imagePrompt || !imagePrompt.trim()) {
         imagePrompt = "Génère une image en t'inspirant des images fournies.";
@@ -6510,6 +6592,7 @@ async function sendMessage() {
                     }
                     updateTokenDisplay();
                     saveConversation();
+                    updateGlobalMemoryAfterTurn(messageContent, fullResponse, activeTextModel);
                     addRegenBtn();
                     if (!_streamCtx.titleEarlyDone) maybeGenerateTitle();
                     isStreaming = false;
@@ -11058,6 +11141,29 @@ function updateLocalFallbackVisibility() {
     document.getElementById('local-fallback-row').style.display = anyLocal ? '' : 'none';
 }
 
+function loadGlobalMemoryPanel() {
+    if (!globalMemoryEditor || !globalMemoryAuto) return;
+    globalMemoryEditor.value = getGlobalMemory();
+    globalMemoryAuto.checked = isGlobalMemoryAutoEnabled();
+    if (globalMemoryStatus) globalMemoryStatus.textContent = '';
+}
+
+globalMemoryEditor?.addEventListener('input', () => {
+    if (globalMemoryStatus) globalMemoryStatus.textContent = 'Modifications non sauvegardées.';
+});
+globalMemoryAuto?.addEventListener('change', () => {
+    localStorage.setItem(GLOBAL_MEMORY_AUTO_KEY, globalMemoryAuto.checked ? '1' : '0');
+    if (globalMemoryStatus) globalMemoryStatus.textContent = 'Réglage sauvegardé.';
+});
+globalMemorySaveBtn?.addEventListener('click', () => {
+    saveGlobalMemory(globalMemoryEditor?.value || '');
+    localStorage.setItem(GLOBAL_MEMORY_AUTO_KEY, globalMemoryAuto?.checked ? '1' : '0');
+});
+globalMemoryClearBtn?.addEventListener('click', async () => {
+    if (!await customConfirm('Effacer toute la mémoire globale de Hinata ?', { icon: 'delete', danger: true, okLabel: 'Effacer' })) return;
+    saveGlobalMemory('');
+});
+
 function openApiKeysModal(tab = 'apimodeles') {
     // Reset de la visibilité des champs clés API
     document.querySelectorAll('.apikey-eye-btn').forEach(btn => {
@@ -11088,6 +11194,7 @@ function openApiKeysModal(tab = 'apimodeles') {
     updateBudgetAmountSuffix();
     if (budget.enabled) updateBudgetPreview();
     _setBudgetDirty(false);
+    loadGlobalMemoryPanel();
     // Activer l'onglet demandé
     document.querySelectorAll('.apikeys-tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.apikeys-panel').forEach(p => p.classList.remove('active'));

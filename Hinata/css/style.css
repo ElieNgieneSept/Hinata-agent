@@ -3805,23 +3805,12 @@ body.dark #cost-info {
 }
 
 /* Boutons toolbar dans la ligne 2 */
-.input-line-2-center .prompt-toolbar-btn {
+.input-line-2-center .prompt-toolbar-btn,
+.input-line-2-right .prompt-toolbar-btn {
     font-size: 0.72rem;
     padding: 4px 10px;
     border-radius: 16px;
     transition: opacity 0.2s ease, transform 0.15s ease;
-}
-
-/* Bouton "Insérer un prompt" flottant au-dessus du curseur */
-#toolbar-insert-btn.floating {
-    position: absolute;
-    z-index: 120;
-    translate: -50% -100%;
-    margin-top: -10px;
-    background: var(--bg-input, #fff);
-    border-color: var(--active-cat-color, var(--accent));
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    transition: left 0.25s ease, top 0.25s ease, opacity 0.2s ease;
 }
 
 /* Micro en mode stop (streaming) */
@@ -5436,6 +5425,39 @@ body.dark .input-action-btn.active .input-action-arrow {
     flex-direction: column;
     gap: 12px;
     padding: 20px 24px 12px;
+}
+
+.global-memory-editor {
+    width: 100%;
+    min-height: 320px;
+    flex: 1;
+    resize: vertical;
+    box-sizing: border-box;
+    padding: 14px;
+    border: 1px solid var(--border-input);
+    border-radius: 8px;
+    background: var(--bg-input);
+    color: var(--text-primary);
+    font: 0.9rem/1.55 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.memory-auto-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.88rem;
+    color: var(--text-primary);
+}
+
+.memory-help,
+.global-memory-status {
+    margin: 0;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+}
+
+.global-memory-status {
+    min-height: 1.2em;
 }
 
 /* Lorsqu'un intro suit le titre, le titre n'a plus de bordure ni de marge basse :
