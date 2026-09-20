@@ -481,6 +481,10 @@ function arrayBufferToBase64(buffer) {
     return btoa(binary);
 }
 
+function base64ToUint8Array(base64) {
+    return Uint8Array.from(atob(base64), character => character.charCodeAt(0));
+}
+
 async function extractPdfText(arrayBuffer) {
     if (typeof pdfjsLib === 'undefined') {
         console.warn('pdfjsLib non disponible');
@@ -596,6 +600,38 @@ fileInput.addEventListener('change', () => {
     fileInput.value = '';
 });
 
+async function attachWorkFile(path) {
+    if (!window.WorkMode?.enabled) return;
+    try {
+        const file = await window.WorkMode.readFile(path);
+        const bytes = base64ToUint8Array(file.base64);
+        const mimeType = file.mimeType || 'application/octet-stream';
+        if (mimeType.startsWith('image/') && mimeType !== 'image/svg+xml') {
+            pendingImages.push({ dataUrl: `data:${mimeType};base64,${file.base64}`, mimeType, name: file.name });
+        } else if (mimeType === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+            const textContent = await extractPdfText(bytes.buffer);
+            pendingFiles.push({ name: file.name, mimeType: 'application/pdf', data: file.base64, textContent });
+        } else if (file.textContent != null || mimeType.startsWith('text/') || /\.(json|xml|yaml|yml)$/i.test(file.name)) {
+            const textContent = file.textContent != null
+                ? file.textContent
+                : new TextDecoder().decode(bytes);
+            pendingFiles.push({
+                name: file.name,
+                mimeType: mimeType || 'text/plain',
+                data: file.base64,
+                textContent
+            });
+        } else {
+            throw new Error('Format de fichier non pris en charge');
+        }
+        renderAttachPreview();
+        updateSendButton();
+    } catch (error) {
+        console.warn('Fichier Work non attaché :', error);
+        alert(`Impossible d’ajouter ${path} : ${error.message || 'lecture impossible'}`);
+    }
+}
+
 // --- Coller une image depuis le presse-papiers ---
 promptInput.addEventListener('paste', (e) => {
     const items = e.clipboardData && e.clipboardData.items;
@@ -626,6 +662,11 @@ inputArea.addEventListener('dragleave', (e) => {
 inputArea.addEventListener('drop', (e) => {
     e.preventDefault();
     inputArea.classList.remove('drag-over');
+    const workPath = e.dataTransfer.getData('application/x-hinata-work-path');
+    if (workPath) {
+        attachWorkFile(workPath);
+        return;
+    }
     const files = e.dataTransfer.files;
     if (!files || files.length === 0) return;
     for (const file of files) {
@@ -1493,6 +1534,7 @@ function setRightPanelTab(tabName) {
         tabsContainer.style.setProperty('--rp-tab-x', activeTab.offsetLeft + 'px');
         tabsContainer.style.setProperty('--rp-tab-w', activeTab.offsetWidth + 'px');
     }
+    if (tabName === 'work') refreshWorkTree();
 }
 document.querySelectorAll('.rp-tab').forEach(tab => {
     tab.addEventListener('click', () => setRightPanelTab(tab.dataset.rpTab));
@@ -1501,6 +1543,105 @@ document.querySelectorAll('.rp-tab').forEach(tab => {
 window.addEventListener('load', () => {
     const active = document.querySelector('.rp-tab.active');
     if (active) setRightPanelTab(active.dataset.rpTab);
+});
+
+// --- Arborescence du dossier Work -----------------------------------------
+const workTree = document.getElementById('work-tree');
+const workTreeRoot = document.getElementById('work-tree-root');
+const workTreeStatus = document.getElementById('work-tree-status');
+const workTreeRefresh = document.getElementById('work-tree-refresh');
+let workTreeRequest = 0;
+
+function buildWorkTree(paths) {
+    const root = { children: new Map(), isDirectory: true };
+    for (const path of paths) {
+        const parts = path.replace(/\/$/, '').split('/').filter(Boolean);
+        let node = root;
+        parts.forEach((part, index) => {
+            if (!node.children.has(part)) node.children.set(part, { children: new Map(), isDirectory: index < parts.length - 1 || path.endsWith('/') });
+            node = node.children.get(part);
+        });
+    }
+    return root;
+}
+
+function renderWorkTreeNode(node, parent, prefix = '') {
+    [...node.children.entries()].sort((left, right) => {
+        if (left[1].isDirectory !== right[1].isDirectory) return left[1].isDirectory ? -1 : 1;
+        return left[0].localeCompare(right[0], 'fr');
+    }).forEach(([name, child]) => {
+        const path = prefix ? `${prefix}/${name}` : name;
+        const wrapper = document.createElement('div');
+        const item = document.createElement('div');
+        item.className = `work-tree-item${child.isDirectory ? ' is-directory' : ' is-file'}`;
+        item.setAttribute('role', 'treeitem');
+        item.dataset.path = path;
+        item.dataset.directory = child.isDirectory ? 'true' : 'false';
+        item.draggable = !child.isDirectory;
+        item.innerHTML = `<span class="work-tree-chevron" aria-hidden="true">${child.isDirectory ? '&#9656;' : ''}</span><span class="work-tree-icon" aria-hidden="true">${child.isDirectory ? '&#128193;' : '&#128196;'}</span><span class="work-tree-name"></span>`;
+        item.querySelector('.work-tree-name').textContent = name;
+        wrapper.appendChild(item);
+        if (child.isDirectory) {
+            const children = document.createElement('div');
+            children.className = 'work-tree-children';
+            children.hidden = true;
+            wrapper.appendChild(children);
+            renderWorkTreeNode(child, children, path);
+        }
+        parent.appendChild(wrapper);
+    });
+}
+
+async function refreshWorkTree() {
+    if (!workTree || !window.WorkMode) return;
+    const request = ++workTreeRequest;
+    workTree.innerHTML = '';
+    if (!window.WorkMode.enabled) {
+        workTreeRoot.textContent = 'Aucun dossier partagé';
+        workTreeStatus.textContent = 'Choisissez un dossier avec le bouton Mode Work.';
+        return;
+    }
+    workTreeRoot.textContent = window.WorkMode.getConversationAccess?.()?.name || 'Dossier Work';
+    workTreeStatus.textContent = 'Chargement de l’arborescence…';
+    try {
+        const paths = await window.WorkMode.listTree();
+        if (request !== workTreeRequest) return;
+        if (!paths.length) {
+            workTreeStatus.textContent = 'Le dossier est vide.';
+            return;
+        }
+        renderWorkTreeNode(buildWorkTree(paths), workTree);
+        workTreeStatus.textContent = `${paths.filter(path => !path.endsWith('/')).length} fichier(s)`;
+    } catch (_) {
+        workTreeStatus.textContent = 'Impossible de lire ce dossier.';
+    }
+}
+
+function handleWorkTreeClick(event) {
+    const item = event.target.closest('.work-tree-item.is-directory');
+    if (!item) return;
+    const children = item.querySelector(':scope > .work-tree-children');
+    if (!children) return;
+    children.hidden = !children.hidden;
+    item.classList.toggle('expanded', !children.hidden);
+}
+
+function handleWorkTreeDragStart(event) {
+    const item = event.target.closest('.work-tree-item.is-file');
+    if (!item) return;
+    event.dataTransfer.effectAllowed = 'copy';
+    event.dataTransfer.setData('application/x-hinata-work-path', item.dataset.path);
+    event.dataTransfer.setData('text/plain', item.dataset.path);
+}
+
+workTree?.addEventListener('click', handleWorkTreeClick);
+workTree?.addEventListener('dragstart', handleWorkTreeDragStart);
+workTreeRefresh?.addEventListener('click', refreshWorkTree);
+document.addEventListener('work-state-change', refreshWorkTree);
+document.addEventListener('work-files-change', refreshWorkTree);
+document.addEventListener('work-folder-selected', () => {
+    setRightPanelOpen(true);
+    setRightPanelTab('work');
 });
 
 // Boutons format d'image dans le volet droit

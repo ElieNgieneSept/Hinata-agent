@@ -20,6 +20,7 @@ contextBridge.exposeInMainWorld('kiroDesktop', {
         setFolder: directory => ipcRenderer.sendSync('kiro-work-set', directory),
         list: () => ipcRenderer.sendSync('kiro-work-list'),
         read: relativePath => ipcRenderer.sendSync('kiro-work-read', relativePath),
+            readBinary: relativePath => ipcRenderer.sendSync('kiro-work-read-binary', relativePath),
         write: (relativePath, content) => ipcRenderer.sendSync('kiro-work-write', relativePath, content),
         remove: relativePath => ipcRenderer.sendSync('kiro-work-delete', relativePath)
     }

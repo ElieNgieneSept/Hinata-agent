@@ -584,6 +584,109 @@ body {
     border-bottom: none;
 }
 
+.work-tree-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.work-tree-root {
+    max-width: 205px;
+    margin-top: 4px;
+    overflow: hidden;
+    color: var(--text);
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.work-tree-status,
+.work-tree-hint {
+    color: var(--text-secondary);
+    font-size: 0.74rem;
+    line-height: 1.45;
+}
+
+.work-tree-status {
+    margin: 0 0 8px;
+}
+
+.work-tree-hint {
+    margin: 12px 0 0;
+}
+
+.work-tree {
+    min-height: 40px;
+    overflow: auto;
+    padding: 4px 0;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+}
+
+.work-tree-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    min-height: 28px;
+    padding: 3px 5px;
+    border-radius: 5px;
+    color: var(--text);
+    font-size: 0.78rem;
+    user-select: none;
+}
+
+.work-tree-item.is-directory {
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.work-tree-item.is-file {
+    cursor: grab;
+}
+
+.work-tree-item.is-file:active {
+    cursor: grabbing;
+}
+
+.work-tree-item:hover,
+.work-tree-item:focus-visible {
+    background: var(--bg-hover);
+    outline: none;
+}
+
+.work-tree-chevron {
+    width: 11px;
+    color: var(--text-secondary);
+    font-size: 0.65rem;
+    transition: transform 0.15s ease;
+}
+
+.work-tree-item.expanded > .work-tree-chevron {
+    transform: rotate(90deg);
+}
+
+.work-tree-icon {
+    width: 18px;
+    text-align: center;
+    font-size: 0.82rem;
+}
+
+.work-tree-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.work-tree-children {
+    width: 100%;
+    margin-left: 12px;
+    border-left: 1px solid var(--border);
+}
+
 .right-panel-section.disabled {
     display: none;
 }

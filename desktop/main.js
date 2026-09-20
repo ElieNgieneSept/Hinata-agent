@@ -29,6 +29,19 @@ function writeJson(file, value) {
     fs.renameSync(temporary, file);
 }
 
+function getMimeType(file) {
+    const extension = path.extname(file).toLowerCase();
+    const mimeTypes = {
+        '.css': 'text/css', '.csv': 'text/csv', '.html': 'text/html', '.htm': 'text/html',
+        '.gif': 'image/gif', '.ico': 'image/x-icon', '.jpeg': 'image/jpeg', '.jpg': 'image/jpeg',
+        '.js': 'text/javascript', '.json': 'application/json', '.log': 'text/plain',
+        '.md': 'text/markdown', '.pdf': 'application/pdf', '.png': 'image/png', '.py': 'text/x-python',
+        '.svg': 'image/svg+xml', '.ts': 'text/typescript', '.txt': 'text/plain',
+        '.webp': 'image/webp'
+    };
+    return mimeTypes[extension] || 'application/octet-stream';
+}
+
 function workPath(relativePath = '') {
     if (!workRoot) throw new Error('Aucun dossier Work sélectionné');
     const candidate = path.resolve(workRoot, relativePath);
@@ -110,6 +123,19 @@ function registerStorageIpc() {
             const file = workPath(relativePath);
             if (fs.statSync(file).size > 250000) throw new Error('Fichier trop volumineux');
             event.returnValue = fs.readFileSync(file, 'utf8');
+        } catch (_) { event.returnValue = null; }
+    });
+    ipcMain.on('kiro-work-read-binary', (event, relativePath) => {
+        try {
+            const file = workPath(relativePath);
+            const stats = fs.statSync(file);
+            if (!stats.isFile() || stats.size > 10 * 1024 * 1024) throw new Error('Fichier trop volumineux');
+            event.returnValue = {
+                name: path.basename(file),
+                mimeType: getMimeType(file),
+                size: stats.size,
+                base64: fs.readFileSync(file).toString('base64')
+            };
         } catch (_) { event.returnValue = null; }
     });
     ipcMain.on('kiro-work-write', (event, relativePath, content) => {

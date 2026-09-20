@@ -43,6 +43,34 @@
         if (file.size > 250000) throw new Error('Fichier trop volumineux');
         return file.text();
     }
+    function arrayBufferToBase64(buffer) {
+        const bytes = new Uint8Array(buffer);
+        let binary = '';
+        for (let index = 0; index < bytes.length; index++) binary += String.fromCharCode(bytes[index]);
+        return btoa(binary);
+    }
+    function isTextPath(path) {
+        return /\.(txt|md|csv|json|xml|svg|log|js|ts|jsx|tsx|html|css|scss|py|java|go|rs|yaml|yml)$/i.test(path);
+    }
+    async function readFile(path) {
+        if (!isSafePath(path) || path.endsWith('/')) throw new Error('Fichier Work invalide');
+        if (isDesktop()) {
+            const result = window.kiroDesktop.work.readBinary(path);
+            if (!result) throw new Error('Lecture impossible');
+            if (isTextPath(path) && result.size > 250000) throw new Error('Fichier texte trop volumineux');
+            if (isTextPath(path)) {
+                const bytes = Uint8Array.from(atob(result.base64), character => character.charCodeAt(0));
+                result.textContent = new TextDecoder().decode(bytes);
+            }
+            return result;
+        }
+        const file = await (await getFile(path)).getFile();
+        if (file.size > (isTextPath(path) ? 250000 : 10 * 1024 * 1024)) throw new Error('Fichier trop volumineux');
+        const buffer = await file.arrayBuffer();
+        const result = { name: file.name, mimeType: file.type || 'application/octet-stream', size: file.size, base64: arrayBufferToBase64(buffer) };
+        if (isTextPath(path)) result.textContent = new TextDecoder().decode(buffer);
+        return result;
+    }
     async function listTree(handle = rootHandle, prefix = '', result = []) {
         if (isDesktop()) return window.kiroDesktop.work.list();
         for await (const entry of handle.values()) {
@@ -67,6 +95,7 @@
         }
         const write = document.getElementById('work-write-toggle');
         if (write) write.checked = !!settings.write;
+        document.dispatchEvent(new CustomEvent('work-state-change'));
     }
     async function chooseFolder() {
         if (isDesktop()) {
@@ -79,6 +108,7 @@
             saveSettings();
             render();
             window.saveConversation?.();
+            document.dispatchEvent(new CustomEvent('work-folder-selected'));
             return;
         }
         if (typeof window.showDirectoryPicker !== 'function') {
@@ -93,6 +123,7 @@
             saveSettings();
             render();
             window.saveConversation?.();
+            document.dispatchEvent(new CustomEvent('work-folder-selected'));
         } catch (error) {
             if (error.name !== 'AbortError') console.error('Work : sélection impossible', error);
         }
@@ -164,6 +195,7 @@
                 applied.push(operation);
             } catch (error) { console.error('Work : opération refusée', error); }
         }
+        if (applied.length) document.dispatchEvent(new CustomEvent('work-files-change'));
         return applied;
     }
     async function createReport(operations, modelId) {
@@ -203,6 +235,8 @@
         },
         getPromptContext,
         getInstructions,
+        listTree,
+        readFile,
         applyOperations,
         createReport,
         toggleWrite() { settings.write = !settings.write; saveSettings(); render(); },
