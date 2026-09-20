@@ -1149,17 +1149,19 @@
                     <h3>Mémoire globale</h3>
                     <p class="apikey-intro">Ce document Markdown contient les règles générales de Hinata puis le contexte utilisateur. Il est ajouté au contexte de chaque agent et reste entièrement modifiable.</p>
                     <div class="apikeys-panel-body">
-                        <label class="memory-auto-toggle" for="global-memory-auto">
-                            <input type="checkbox" id="global-memory-auto">
-                            Mettre à jour automatiquement après les réponses
-                        </label>
+                        <div class="memory-settings-row">
+                            <label class="memory-auto-toggle" for="global-memory-auto">
+                                <input type="checkbox" id="global-memory-auto">
+                                Mettre à jour automatiquement après les réponses
+                            </label>
+                            <button type="button" id="global-memory-save-btn" class="models-save-btn memory-save-btn">Sauvegarder</button>
+                        </div>
                         <textarea id="global-memory-editor" class="global-memory-editor" spellcheck="false" placeholder="# Mémoire globale\n\nNom, habitudes, expertise et besoins récurrents de l'utilisateur..." aria-label="Mémoire globale au format Markdown"></textarea>
                         <p class="memory-help">La mémoire reste locale. L'actualisation automatique modifie uniquement la section « CONTEXTE UTILISATEUR » et conserve les règles générales de Hinata, sauf si vous les modifiez manuellement.</p>
                         <div id="global-memory-status" class="global-memory-status" role="status" aria-live="polite"></div>
                     </div>
                     <div class="models-save-row">
                         <button type="button" id="global-memory-clear-btn" class="models-cancel-btn">Effacer</button>
-                        <button type="button" id="global-memory-save-btn" class="models-save-btn">Sauvegarder</button>
                     </div>
                 </div>
                 <!-- Panel Statistiques -->

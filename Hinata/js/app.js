@@ -9227,6 +9227,9 @@ document.querySelectorAll('.apikeys-tab').forEach(tab => {
             const budgetCancelBtn = document.getElementById('budget-cancel-btn');
             if (budgetCancelBtn) budgetCancelBtn.click();
         }
+        if (currentActiveTab && currentActiveTab.dataset.tab === 'memory' && tab.dataset.tab !== 'memory') {
+            saveGlobalMemoryPanel();
+        }
         document.querySelectorAll('.apikeys-tab').forEach(t => t.classList.remove('active'));
         document.querySelectorAll('.apikeys-panel').forEach(p => p.classList.remove('active'));
         tab.classList.add('active');
@@ -9298,7 +9301,17 @@ const _storage = {
 // Le filemanager appelle ce hook après chaque write/update : on invalide
 // le cache du panneau pour qu'il se recharge à la prochaine ouverture.
 if (typeof setOnConvMutated === 'function') {
-    setOnConvMutated(() => { _storage._dirty = true; });
+    setOnConvMutated(() => {
+        _storage._dirty = true;
+        const panel = document.getElementById('panel-stockage');
+        if (!panel?.classList.contains('active') || panel.dataset.storageView !== 'home') return;
+        if (_storage.refreshing) return;
+        _storage.refreshing = true;
+        _loadStorageData()
+            .then(() => _renderStorageOverview())
+            .catch(error => console.warn('Actualisation du stockage impossible :', error))
+            .finally(() => { _storage.refreshing = false; });
+    });
 }
 
 // Icônes SVG (24x24 viewBox, stroke currentColor) — style Feather.
@@ -9412,25 +9425,16 @@ function _extractFullText(messages) {
 }
 
 async function _loadStorageData() {
-    const db = await openConvDB();
-    const tx = db.transaction('conversations', 'readonly');
-    const store = tx.objectStore('conversations');
-    const [keys, allValues] = await Promise.all([
-        new Promise(r => { const q = store.getAllKeys(); q.onsuccess = () => r(q.result); q.onerror = () => r([]); }),
-        new Promise(r => { const q = store.getAll(); q.onsuccess = () => r(q.result); q.onerror = () => r([]); })
-    ]);
+    const metadata = await listConversationFiles();
     const conversations = [];
     const medias = [];
     let totalSize = 0;
     let mediaSize = 0;
     const categorySizes = { texts: 0, images: 0, pdf: 0, audio: 0, video: 0, other: 0 };
-    for (let i = 0; i < keys.length; i++) {
-        const raw = allValues[i];
-        if (!raw) continue;
-        let data;
-        try { data = typeof raw === 'string' ? JSON.parse(raw) : raw; } catch { continue; }
-        if (data.deleted) continue;
-        const filename = keys[i];
+    for (const meta of metadata) {
+        const filename = meta.filename;
+        const data = await readConversationFile(filename);
+        if (!data || data.deleted) continue;
         const date = data.lastActivity || data.date || '';
         const firstMsg = data.messages?.[0]?.content;
         const titre = data.titre || (typeof firstMsg === 'string' ? firstMsg.slice(0, 80) : 'Sans titre');
@@ -10433,6 +10437,7 @@ async function tryCloseApiKeysModal() {
         const budgetCancelBtn = document.getElementById('budget-cancel-btn');
         if (budgetCancelBtn) budgetCancelBtn.click();
     }
+    if (activeTabName === 'memory') saveGlobalMemoryPanel();
     closeApiKeysModal();
 }
 apikeysModalOverlay.addEventListener('click', (e) => {
@@ -11155,9 +11160,13 @@ globalMemoryAuto?.addEventListener('change', () => {
     localStorage.setItem(GLOBAL_MEMORY_AUTO_KEY, globalMemoryAuto.checked ? '1' : '0');
     if (globalMemoryStatus) globalMemoryStatus.textContent = 'Réglage sauvegardé.';
 });
+function saveGlobalMemoryPanel() {
+    if (!globalMemoryEditor || !globalMemoryAuto) return;
+    saveGlobalMemory(globalMemoryEditor.value);
+    localStorage.setItem(GLOBAL_MEMORY_AUTO_KEY, globalMemoryAuto.checked ? '1' : '0');
+}
 globalMemorySaveBtn?.addEventListener('click', () => {
-    saveGlobalMemory(globalMemoryEditor?.value || '');
-    localStorage.setItem(GLOBAL_MEMORY_AUTO_KEY, globalMemoryAuto?.checked ? '1' : '0');
+    saveGlobalMemoryPanel();
 });
 globalMemoryClearBtn?.addEventListener('click', async () => {
     if (!await customConfirm('Effacer toute la mémoire globale de Hinata ?', { icon: 'delete', danger: true, okLabel: 'Effacer' })) return;
