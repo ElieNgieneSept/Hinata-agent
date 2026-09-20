@@ -1,6 +1,6 @@
 # Hinata
 
-**Hinata** est une application de chat IA locale, basée sur Electron, avec une interface web privée : vos conversations, vos réglages et vos clés API restent sur votre machine.
+**Hinata** est une application de chat IA locale, basée sur Electron, avec une interface web privée : vos conversations, vos réglages et vos clés API restent sur votre ordinateur.
 
 - 🌐 Interface web exécutée localement, sans serveur distant
 - 🧠 Multi-fournisseurs : OpenAI, Anthropic, Google, Mistral, DeepSeek, Groq, xAI, Z.ai, Perplexity, Ollama, LM Studio, OpenRouter…
