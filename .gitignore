@@ -12,7 +12,7 @@ out/
 # Fichiers de données locaux de l'application (conversations, réglages, clés, etc.)
 Hinata/data/
 Hinata/historique/
-
+.claude
 # macOS
 .DS_Store
 *.swp

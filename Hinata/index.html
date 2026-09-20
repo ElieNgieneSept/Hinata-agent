@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="color-scheme" content="light dark">
     <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self' file: blob: data:; script-src 'self' file: 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' file: 'unsafe-inline'; img-src 'self' file: data: blob: https: http://localhost:* http://127.0.0.1:*; font-src 'self' file: data:; media-src 'self' file: data: blob:; connect-src 'self' file: blob: data: https://api.openai.com https://api.anthropic.com https://api.deepseek.com https://api.mistral.ai https://api.perplexity.ai https://api.x.ai https://api.z.ai https://api.groq.com https://generativelanguage.googleapis.com https://openrouter.ai https://ollama.com https://cdn.jsdelivr.net http://localhost:* http://127.0.0.1:*; worker-src 'self' file: blob: https://cdn.jsdelivr.net; frame-src 'self' file: blob: data:; object-src 'none'; base-uri 'self'; form-action 'none';">
+        content="default-src 'self' file: blob: data:; script-src 'self' file: 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' file: 'unsafe-inline'; img-src 'self' file: data: blob: https: http://localhost:* http://127.0.0.1:*; font-src 'self' file: data:; media-src 'self' file: data: blob:; connect-src 'self' file: blob: data: https://api.openai.com https://api.anthropic.com https://api.deepseek.com https://api.mistral.ai https://api.perplexity.ai https://api.x.ai https://api.z.ai https://api.groq.com https://generativelanguage.googleapis.com https://openrouter.ai https://ollama.com https://cdn.jsdelivr.net http://localhost:* http://127.0.0.1:*; worker-src 'self' file: blob: https://cdn.jsdelivr.net; frame-src 'self' file: blob: data: https: http:; object-src 'none'; base-uri 'self'; form-action 'none';">
     <title>Hinata</title>
     <link rel="icon" type="image/png" href="images/Hinata.png">
     <link rel="stylesheet" href="css/style.css" id="main-css">
@@ -212,6 +212,31 @@
     </aside>
 
     <main class="main">
+        <nav id="view-tabs" class="view-tabs" aria-label="Vues principales">
+            <button type="button" class="view-tab active" data-view="chat" aria-selected="true">Chats</button>
+            <button type="button" class="view-tab" data-view="browser" aria-selected="false">Browser</button>
+        </nav>
+        <section id="browser-view" class="browser-view" aria-label="Navigateur interne" hidden>
+            <div id="browser-tabs" class="browser-tabs" role="tablist" aria-label="Onglets du navigateur">
+                <button type="button" class="browser-tab active" role="tab" aria-selected="true" data-browser-tab="0">Google</button>
+                <button type="button" id="browser-new-tab" class="browser-new-tab" title="Nouvel onglet" aria-label="Nouvel onglet">+</button>
+            </div>
+            <div class="browser-toolbar">
+                <button type="button" id="browser-back" class="browser-control" title="Page précédente" aria-label="Page précédente">&#8592;</button>
+                <button type="button" id="browser-forward" class="browser-control" title="Page suivante" aria-label="Page suivante">&#8594;</button>
+                <button type="button" id="browser-reload" class="browser-control" title="Actualiser" aria-label="Actualiser">&#8635;</button>
+                <form id="browser-address-form" class="browser-address-form">
+                    <input id="browser-address" class="browser-address" type="text" inputmode="url" autocomplete="off" spellcheck="false" placeholder="Saisir une adresse web..." aria-label="Adresse web">
+                </form>
+            </div>
+            <div id="browser-bookmarks" class="browser-bookmarks" aria-label="Favoris et raccourcis du navigateur">
+                <button type="button" id="browser-add-bookmark" class="browser-add-bookmark" title="Ajouter la page actuelle aux favoris" aria-label="Ajouter la page actuelle aux favoris">☆</button>
+            </div>
+            <div id="browser-pages" class="browser-pages">
+                <webview id="browser-webview" class="browser-webview browser-page-content" data-src="https://www.google.com" partition="persist:hinata-browser" allowpopups></webview>
+                <iframe id="browser-frame" class="browser-frame browser-page-content" title="Navigateur web" hidden></iframe>
+            </div>
+        </section>
         <div id="budget-alert-overlay" class="budget-alert-overlay" style="display:none">
             <div class="budget-alert-popup">
                 <div class="budget-alert-icon">⚠️</div>

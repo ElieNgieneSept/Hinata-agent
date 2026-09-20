@@ -11,6 +11,20 @@ const spSelect = document.getElementById('sp-select');
 const chatAgentSelect = document.getElementById('chat-agent-select');
 const chatAgentStatus = document.getElementById('chat-agent-status');
 const chatAgentAvatar = document.getElementById('chat-agent-avatar');
+const viewTabs = document.getElementById('view-tabs');
+const browserView = document.getElementById('browser-view');
+const browserWebview = document.getElementById('browser-webview');
+const browserAddressForm = document.getElementById('browser-address-form');
+const browserAddress = document.getElementById('browser-address');
+const browserBack = document.getElementById('browser-back');
+const browserForward = document.getElementById('browser-forward');
+const browserReload = document.getElementById('browser-reload');
+const browserTabs = document.getElementById('browser-tabs');
+const browserNewTab = document.getElementById('browser-new-tab');
+const browserPages = document.getElementById('browser-pages');
+const browserFrame = document.getElementById('browser-frame');
+const browserBookmarks = document.getElementById('browser-bookmarks');
+const browserAddBookmark = document.getElementById('browser-add-bookmark');
 const agentMascotWidget = document.getElementById('agent-mascot-widget');
 const agentMascotContent = document.getElementById('agent-mascot-content');
 const chatInputWrapper = document.querySelector('.input-wrapper');
@@ -1079,6 +1093,273 @@ sidebarToggle.addEventListener('click', () => {
     sidebarToggle.classList.toggle('collapsed', collapsed);
     sidebarToggle.title = collapsed ? 'Afficher le panneau' : 'Masquer le panneau';
 });
+
+// --- Onglets Chats / Browser ---
+function initViewTabs() {
+    if (!viewTabs || !browserView || !browserTabs || !browserPages) return;
+
+    const browserTab = viewTabs.querySelector('[data-view="browser"]');
+    const isElectron = Boolean(window.kiroDesktop?.isDesktop && browserWebview);
+    if (!isElectron) {
+        browserTab?.remove();
+        browserView.hidden = true;
+        return;
+    }
+    let nextPageId = 1;
+    let activePageId = 0;
+    const pages = new Map();
+    const defaultBookmarks = [
+        { title: 'Gemini', url: 'https://gemini.google.com', domain: 'gemini.google.com' },
+        { title: 'ChatGPT', url: 'https://chatgpt.com', domain: 'chatgpt.com' },
+        { title: 'Claude', url: 'https://claude.ai', domain: 'claude.ai' },
+        { title: 'DeepSeek', url: 'https://chat.deepseek.com', domain: 'chat.deepseek.com' },
+        { title: 'Qwen', url: 'https://chat.qwen.ai', domain: 'chat.qwen.ai' }
+    ];
+    let bookmarks = [];
+
+    function pageTitle(url) {
+        try { return new URL(url).hostname.replace(/^www\./, '') || 'Nouvel onglet'; }
+        catch (_) { return 'Nouvel onglet'; }
+    }
+
+    function displayBrowserUrl(url) {
+        try {
+            const parsed = new URL(url);
+            parsed.hostname = parsed.hostname.replace(/^www\./, '');
+            return `${parsed.hostname}${parsed.port ? `:${parsed.port}` : ''}${parsed.pathname === '/' ? '' : parsed.pathname}${parsed.search}${parsed.hash}`;
+        } catch (_) { return url || ''; }
+    }
+
+    function bookmarkIcon(domain) {
+        return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=32`;
+    }
+
+    function renderBookmarks() {
+        if (!browserBookmarks) return;
+        browserBookmarks.querySelectorAll('.browser-bookmark').forEach(button => button.remove());
+        bookmarks.forEach((bookmark, index) => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'browser-bookmark';
+            button.title = bookmark.title;
+            button.innerHTML = `<img src="${bookmarkIcon(bookmark.domain)}" alt=""><span class="browser-bookmark-label">${bookmark.title}</span><span class="browser-bookmark-remove" role="button" tabindex="0" title="Supprimer le favori" aria-label="Supprimer ${bookmark.title}">×</span>`;
+            button.addEventListener('click', event => {
+                if (event.target.closest('.browser-bookmark-remove')) return;
+                loadBrowserUrl(bookmark.url);
+            });
+            const removeButton = button.querySelector('.browser-bookmark-remove');
+            const removeBookmark = event => {
+                event.stopPropagation();
+                bookmarks.splice(index, 1);
+                localStorage.setItem('hinata-browser-bookmarks', JSON.stringify(bookmarks));
+                renderBookmarks();
+            };
+            removeButton.addEventListener('click', removeBookmark);
+            removeButton.addEventListener('keydown', event => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    removeBookmark(event);
+                }
+            });
+            browserBookmarks.insertBefore(button, browserAddBookmark);
+        });
+    }
+
+    function loadBookmarks() {
+        try {
+            const saved = JSON.parse(localStorage.getItem('hinata-browser-bookmarks') || 'null');
+            bookmarks = Array.isArray(saved) && saved.length ? saved : defaultBookmarks;
+        } catch (_) { bookmarks = defaultBookmarks; }
+        localStorage.setItem('hinata-browser-bookmarks', JSON.stringify(bookmarks));
+        renderBookmarks();
+    }
+
+    function normalizeBrowserUrl(value) {
+        const input = String(value || '').trim();
+        if (!input) return null;
+        const candidate = /^[a-z][a-z\d+.-]*:\/\//i.test(input)
+            ? input
+            : (input.includes('.') ? `https://${input}` : `https://www.google.com/search?q=${encodeURIComponent(input)}`);
+        try {
+            const url = new URL(candidate);
+            return url.protocol === 'http:' || url.protocol === 'https:' ? url.toString() : null;
+        } catch (_) { return null; }
+    }
+
+    function activePage() { return pages.get(activePageId); }
+
+    function updateBrowserNavigationState() {
+        const page = activePage();
+        if (!page || !isElectron) {
+            browserBack.disabled = true;
+            browserForward.disabled = true;
+            return;
+        }
+        try {
+            browserBack.disabled = !page.element.canGoBack();
+            browserForward.disabled = !page.element.canGoForward();
+        } catch (_) {
+            browserBack.disabled = true;
+            browserForward.disabled = true;
+        }
+    }
+
+    function updateBrowserAddress(url) {
+        const page = activePage();
+        if (page && url) page.url = url;
+        if (page && document.activeElement !== browserAddress) browserAddress.value = displayBrowserUrl(page.url);
+        updateBrowserNavigationState();
+    }
+
+    function renderBrowserTabs() {
+        browserTabs.querySelectorAll('.browser-tab').forEach(tab => tab.remove());
+        pages.forEach(page => {
+            const tab = document.createElement('button');
+            tab.type = 'button';
+            tab.className = `browser-tab${page.id === activePageId ? ' active' : ''}`;
+            tab.role = 'tab';
+            tab.dataset.browserTab = String(page.id);
+            tab.setAttribute('aria-selected', String(page.id === activePageId));
+            tab.innerHTML = `<span>${page.title}</span><span class="browser-tab-close" title="Fermer l'onglet" aria-label="Fermer l'onglet">&times;</span>`;
+            browserTabs.insertBefore(tab, browserNewTab);
+        });
+    }
+
+    function showPage(page) {
+        pages.forEach(item => { item.element.hidden = item.id !== page.id; });
+        activePageId = page.id;
+        browserAddress.value = displayBrowserUrl(page.url);
+        renderBrowserTabs();
+        updateBrowserNavigationState();
+    }
+
+    function connectElectronPage(page) {
+        ['did-navigate', 'did-navigate-in-page'].forEach(eventName => {
+            page.element.addEventListener(eventName, event => {
+                page.url = event.url;
+                page.title = pageTitle(event.url);
+                if (page.id === activePageId) updateBrowserAddress(event.url);
+                renderBrowserTabs();
+            });
+        });
+        page.element.addEventListener('did-finish-load', () => {
+            if (page.id === activePageId) updateBrowserAddress(page.element.getURL());
+        });
+        page.element.addEventListener('new-window', event => {
+            event.preventDefault();
+            createPage(event.url, pageTitle(event.url));
+        });
+    }
+
+    function createPage(url = 'https://www.google.com', title = 'Google') {
+        const page = { id: nextPageId++, url, title, element: null };
+        if (isElectron) {
+            page.element = document.createElement('webview');
+            page.element.className = 'browser-webview browser-page-content';
+            page.element.setAttribute('partition', 'persist:hinata-browser');
+            page.element.setAttribute('allowpopups', '');
+            page.element.src = url;
+            connectElectronPage(page);
+        } else {
+            page.element = document.createElement('iframe');
+            page.element.className = 'browser-frame browser-page-content';
+            page.element.title = title;
+            page.element.src = url;
+        }
+        browserPages.appendChild(page.element);
+        pages.set(page.id, page);
+        showPage(page);
+        return page;
+    }
+
+    function closePage(id) {
+        if (pages.size === 1) return;
+        const page = pages.get(id);
+        if (!page) return;
+        page.element.remove();
+        pages.delete(id);
+        const next = pages.get(activePageId) || pages.values().next().value;
+        showPage(next);
+    }
+
+    function loadBrowserUrl(value) {
+        const url = normalizeBrowserUrl(value);
+        const page = activePage();
+        if (!url || !page) return;
+        page.url = url;
+        page.title = pageTitle(url);
+        page.element.src = url;
+        browserAddress.value = displayBrowserUrl(url);
+        renderBrowserTabs();
+    }
+
+    function setActiveView(view) {
+        const isBrowser = view === 'browser';
+        document.querySelectorAll('.view-tab').forEach(tab => {
+            const active = tab.dataset.view === view;
+            tab.classList.toggle('active', active);
+            tab.setAttribute('aria-selected', String(active));
+        });
+        document.querySelector('.main')?.classList.toggle('browser-active', isBrowser);
+        browserView.hidden = !isBrowser;
+        if (isBrowser) {
+            const page = activePage();
+            if (page) showPage(page);
+            if (isElectron && page && !page.loaded) {
+                page.loaded = true;
+                connectElectronPage(page);
+                page.element.src = page.url;
+            }
+            updateBrowserNavigationState();
+        }
+    }
+    window.hinataShowView = setActiveView;
+
+    viewTabs.addEventListener('click', event => {
+        const tab = event.target.closest('.view-tab');
+        if (tab && !tab.hidden) setActiveView(tab.dataset.view);
+    });
+    browserTabs.addEventListener('click', event => {
+        const tab = event.target.closest('.browser-tab');
+        if (!tab) return;
+        const id = Number(tab.dataset.browserTab);
+        if (event.target.closest('.browser-tab-close')) closePage(id);
+        else showPage(pages.get(id));
+    });
+    browserNewTab.addEventListener('click', () => createPage());
+    browserAddBookmark?.addEventListener('click', () => {
+        const page = activePage();
+        if (!page || bookmarks.some(bookmark => bookmark.url === page.url)) return;
+        bookmarks.push({ title: page.title, url: page.url, domain: new URL(page.url).hostname });
+        localStorage.setItem('hinata-browser-bookmarks', JSON.stringify(bookmarks));
+        renderBookmarks();
+    });
+    browserAddressForm?.addEventListener('submit', event => {
+        event.preventDefault();
+        loadBrowserUrl(browserAddress.value);
+    });
+    browserBack?.addEventListener('click', () => {
+        const page = activePage();
+        if (isElectron && page?.element.canGoBack()) page.element.goBack();
+    });
+    browserForward?.addEventListener('click', () => {
+        const page = activePage();
+        if (isElectron && page?.element.canGoForward()) page.element.goForward();
+    });
+    browserReload?.addEventListener('click', () => { if (activePage()) activePage().element.src = activePage().url; });
+    viewTabs.querySelectorAll('.browser-shortcut').forEach(button => {
+        button.addEventListener('click', () => loadBrowserUrl(button.dataset.url));
+    });
+
+    browserFrame.hidden = true;
+    loadBookmarks();
+    pages.set(0, { id: 0, url: 'https://www.google.com', title: 'Google', element: browserWebview, loaded: false });
+    browserWebview.hidden = true;
+    renderBrowserTabs();
+    setActiveView('chat');
+}
+
+initViewTabs();
 
 // --- Panneau droit (Rôle) + toolbar latérale (gear + canvas) ---
 const rightPanel = document.getElementById('right-panel');
@@ -6273,7 +6554,10 @@ async function refreshConvList() {
         itemContent.appendChild(dateLine);
 
         item.appendChild(itemContent);
-        item.addEventListener('click', () => loadConversation(conv.filename));
+        item.addEventListener('click', () => {
+            window.hinataShowView?.('chat');
+            loadConversation(conv.filename);
+        });
         fragment.appendChild(item);
     }
     convList.appendChild(fragment);
@@ -11485,16 +11769,33 @@ function initSidebarResize() {
     }
 
     let isResizing = false;
-    resizer.addEventListener('mousedown', (e) => {
+
+    function stopResizing(event) {
+        if (!isResizing) return;
+        isResizing = false;
+        resizer.classList.remove('resizing');
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+        if (event?.pointerId !== undefined && resizer.hasPointerCapture?.(event.pointerId)) {
+            resizer.releasePointerCapture(event.pointerId);
+        }
+        const currentWidth = parseInt(sidebar.style.width, 10);
+        if (Number.isFinite(currentWidth)) {
+            localStorage.setItem('kiro-sidebar-width', currentWidth);
+        }
+    }
+
+    resizer.addEventListener('pointerdown', (e) => {
         if (sidebar.classList.contains('collapsed')) return;
         isResizing = true;
         resizer.classList.add('resizing');
         document.body.style.cursor = 'col-resize';
         document.body.style.userSelect = 'none';
+        resizer.setPointerCapture?.(e.pointerId);
         e.preventDefault();
     });
 
-    window.addEventListener('mousemove', (e) => {
+    resizer.addEventListener('pointermove', (e) => {
         if (!isResizing) return;
         let newWidth = e.clientX;
         if (newWidth < 180) newWidth = 180;
@@ -11504,15 +11805,7 @@ function initSidebarResize() {
         sidebar.style.minWidth = newWidth + 'px';
     });
 
-    window.addEventListener('mouseup', () => {
-        if (!isResizing) return;
-        isResizing = false;
-        resizer.classList.remove('resizing');
-        document.body.style.cursor = '';
-        document.body.style.userSelect = '';
-        const currentWidth = parseInt(sidebar.style.width, 10);
-        if (Number.isFinite(currentWidth)) {
-            localStorage.setItem('kiro-sidebar-width', currentWidth);
-        }
-    });
+    resizer.addEventListener('pointerup', stopResizing);
+    resizer.addEventListener('pointercancel', stopResizing);
+    window.addEventListener('blur', () => stopResizing());
 }

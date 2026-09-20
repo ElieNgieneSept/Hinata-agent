@@ -3,6 +3,7 @@ directories:
   buildResources: build
 appId: com.eliesept.hinata
 productName: Hinata
+icon: build/icon.icns
 files:
   - filter:
       - desktop/**/*
