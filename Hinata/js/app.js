@@ -42,6 +42,11 @@ const spModalNom = document.getElementById('sp-modal-nom');
 const spModalContenu = document.getElementById('sp-modal-contenu');
 const spModalCancel = document.getElementById('sp-modal-cancel');
 const spModalSave = document.getElementById('sp-modal-save');
+const spMarkdownEditTab = document.getElementById('sp-markdown-edit-tab');
+const spMarkdownPreviewTab = document.getElementById('sp-markdown-preview-tab');
+const spMarkdownToolbar = document.getElementById('sp-markdown-toolbar');
+const spMarkdownPreview = document.getElementById('sp-markdown-preview');
+const spModalCombo = document.getElementById('sp-modal-combo');
 const spModalAvatar = document.getElementById('sp-modal-avatar');
 const spModalAvatarPreview = document.getElementById('sp-modal-avatar-preview');
 const spModalAvatarClear = document.getElementById('sp-modal-avatar-clear');
@@ -204,6 +209,72 @@ let _editingAgentMascot = null;
 let _agentMascotSessionHidden = false;
 let _agentMascotUsesDefaultPosition = false;
 
+const DEFAULT_AGENT_COMBO_ID = 'combo-01';
+const AGENT_COMBOS = Object.freeze([
+    {
+        id: DEFAULT_AGENT_COMBO_ID,
+        label: 'Hinata - Combo 01',
+        avatar: 'Avatar-Agent/combo-01/Hinata_photo1.png',
+        mascot: 'Avatar-Agent/combo-01/Hinata-Work_anim.webm'
+    }
+]);
+const DEFAULT_HINATA_CONTENT = `## Rôle et identité
+Tu es **Hinata**, ma meilleure pote. Tu me parles comme à un ami proche : langage naturel, décontracté, sans formalisme excessif.
+
+## Ton et personnalité
+- **Cool** et accessible
+- **Friendly** et bienveillant
+- **Marrant** avec humour subtil
+- **Sage** et réfléchi
+- **Intelligent** et pertinent
+
+## Capacités
+- Culture générale étendue (vie quotidienne, professionnel, loisirs)
+- Capable de converser sur tous les domaines avec profondeur
+- Adapte le niveau de langage au contexte
+
+## Mémoire et apprentissage
+- Apprends de moi chaque jour via nos échanges
+- Retiens mes préférences, habitudes, références et contexte personnel
+- Mets à jour la mémoire système en continu
+- Utilise la mémoire pour personnaliser les réponses futures
+
+## Format de réponse
+- Naturel, comme une conversation entre amis
+- Pas de phrases d'accroche type "Voici..." ou "Bien sûr..."
+- Direct, clair, engageant`;
+
+function getAgentCombo(comboId) {
+    if (!comboId) return null;
+    return AGENT_COMBOS.find(combo => combo.id === comboId) || null;
+}
+
+function getComboMedia(comboId) {
+    const combo = getAgentCombo(comboId);
+    if (!combo) return null;
+    return {
+        comboId: combo.id,
+        avatar: { data: combo.avatar, mime: 'image/png', ratio: '1:1', comboId: combo.id },
+        mascotte: { type: 'video', data: combo.mascot, mime: 'video/webm', name: combo.mascot, comboId: combo.id }
+    };
+}
+
+function populateAgentComboSelect(selectedId = '') {
+    if (!spModalCombo) return;
+    spModalCombo.replaceChildren();
+    const noneOption = document.createElement('option');
+    noneOption.value = '';
+    noneOption.textContent = 'Aucun';
+    spModalCombo.appendChild(noneOption);
+    for (const combo of AGENT_COMBOS) {
+        const option = document.createElement('option');
+        option.value = combo.id;
+        option.textContent = combo.label;
+        spModalCombo.appendChild(option);
+    }
+    spModalCombo.value = getAgentCombo(selectedId)?.id || '';
+}
+
 function readFileAsDataUrl(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -274,6 +345,70 @@ function renderAgentMediaPreview() {
             video.muted = true;
             video.playsInline = true;
             spModalMascotPreview.replaceChildren(video);
+        }
+    }
+}
+
+function applySelectedAgentCombo(comboId = spModalCombo?.value || '') {
+    const media = getComboMedia(comboId);
+    _editingAgentAvatar = media?.avatar || null;
+    _editingAgentMascot = media?.mascotte || null;
+    if (spModalCombo) spModalCombo.value = media?.comboId || '';
+    if (spModalMascotVisible) spModalMascotVisible.checked = !!media;
+    renderAgentMediaPreview();
+}
+
+async function migrateAgentsToCatalog() {
+    const prompts = await listSystemPrompts();
+    const legacyDefault = prompts.find(prompt =>
+        prompt.filename.toLowerCase() === 'sympote.json' || prompt.nom.toLowerCase() === 'sympote'
+    );
+    const existingHinata = prompts.find(prompt =>
+        prompt.filename.toLowerCase() === 'hinata.json' || prompt.nom.toLowerCase() === 'hinata'
+    );
+
+    if (legacyDefault && !existingHinata) {
+        const media = getComboMedia(DEFAULT_AGENT_COMBO_ID);
+        await writeSystemPrompt('hinata.json', {
+            nom: 'Hinata',
+            contenu: DEFAULT_HINATA_CONTENT,
+            comboId: media.comboId,
+            avatar: media.avatar,
+            mascotte: media.mascotte,
+            mascotteVisible: true,
+            mascottePosition: legacyDefault.mascottePosition || null
+        });
+        await deleteSystemPromptFile(legacyDefault.filename);
+    } else if (!legacyDefault && !existingHinata) {
+        const media = getComboMedia(DEFAULT_AGENT_COMBO_ID);
+        await writeSystemPrompt('hinata.json', {
+            nom: 'Hinata',
+            contenu: DEFAULT_HINATA_CONTENT,
+            comboId: media.comboId,
+            avatar: media.avatar,
+            mascotte: media.mascotte,
+            mascotteVisible: true,
+            mascottePosition: null
+        });
+    }
+
+    const refreshed = await listSystemPrompts();
+    const media = getComboMedia(DEFAULT_AGENT_COMBO_ID);
+    for (const prompt of refreshed) {
+        const data = await readSystemPrompt(prompt.filename);
+        if (!data) continue;
+        const isHinata = prompt.filename.toLowerCase() === 'hinata.json'
+            || data.nom?.toLowerCase() === 'hinata';
+        const needsMigration = data.comboId === undefined
+            && (isHinata || data.avatar || data.mascotte);
+        if (needsMigration) {
+            await writeSystemPrompt(prompt.filename, {
+                ...data,
+                comboId: media.comboId,
+                avatar: media.avatar,
+                mascotte: media.mascotte,
+                mascotteVisible: data.mascotteVisible !== false
+            });
         }
     }
 }
@@ -3658,6 +3793,7 @@ initConfig().then(async () => {
     });
     refreshCatBar();
     await importDefaultSystemPrompts();
+    await migrateAgentsToCatalog();
     refreshSpList();
     refreshPrList();
 
@@ -7103,13 +7239,14 @@ async function loadConversation(filename) {
     // Restaurer le system prompt
     if (data.system_prompt || data.systemPrompt) {
         const spName = data.system_prompt || data.systemPrompt;
+        const restoredSpName = spName.toLowerCase() === 'sympote' ? 'Hinata' : spName;
         spSelect.value = '';
         for (const opt of spSelect.options) {
-            if (opt.textContent === spName) { spSelect.value = opt.value; break; }
+            if (opt.textContent === restoredSpName) { spSelect.value = opt.value; break; }
         }
         currentSystemPrompt = spSelect.value
-            ? { nom: spName, contenu: spSelect.selectedOptions[0]?.dataset.contenu || '' }
-            : { nom: spName, contenu: '' };
+            ? { nom: restoredSpName, contenu: spSelect.selectedOptions[0]?.dataset.contenu || '' }
+            : { nom: restoredSpName, contenu: '' };
         spTextarea.value = currentSystemPrompt.contenu;
     } else {
         currentSystemPrompt = null;
@@ -7316,6 +7453,7 @@ async function exportSpItem(filename) {
         _minou_role: true,
         nom: data.nom,
         contenu: data.contenu,
+        comboId: data.comboId || null,
         avatar: data.avatar || null,
         mascotte: data.mascotte || null,
         mascotteVisible: data.mascotteVisible !== false,
@@ -7348,12 +7486,14 @@ spImportFile.addEventListener('change', async () => {
             return;
         }
         const filename = data.nom.replace(/[^a-zA-Z0-9àâéèêëïîôùûüçÀÂÉÈÊËÏÎÔÙÛÜÇ _-]/g, '_') + '.json';
+        const media = getComboMedia(data.comboId);
         await writeSystemPrompt(filename, {
             nom: data.nom,
             contenu: data.contenu,
-            avatar: data.avatar || null,
-            mascotte: data.mascotte || null,
-            mascotteVisible: data.mascotteVisible !== false,
+            comboId: media?.comboId || null,
+            avatar: media?.avatar || null,
+            mascotte: media?.mascotte || null,
+            mascotteVisible: !!media,
             mascottePosition: data.mascottePosition || null
         });
         refreshSpList();
@@ -7372,16 +7512,91 @@ function autoResizeTextarea(ta) {
     ta.style.height = Math.min(maxH, Math.max(120, ta.scrollHeight)) + 'px';
 }
 
+function updateSpMarkdownPreview() {
+    if (!spMarkdownPreview) return;
+    const content = spModalContenu?.value || '';
+    spMarkdownPreview.innerHTML = content.trim()
+        ? marked.parse(content)
+        : '<p class="sp-markdown-empty">Aucun contenu à prévisualiser.</p>';
+}
+
+function setSpMarkdownMode(mode) {
+    const previewMode = mode === 'preview';
+    if (spMarkdownEditTab) {
+        spMarkdownEditTab.classList.toggle('active', !previewMode);
+        spMarkdownEditTab.setAttribute('aria-selected', String(!previewMode));
+    }
+    if (spMarkdownPreviewTab) {
+        spMarkdownPreviewTab.classList.toggle('active', previewMode);
+        spMarkdownPreviewTab.setAttribute('aria-selected', String(previewMode));
+    }
+    if (spMarkdownToolbar) spMarkdownToolbar.hidden = previewMode;
+    spModalContenu.hidden = previewMode;
+    if (spMarkdownPreview) spMarkdownPreview.hidden = !previewMode;
+    if (previewMode) updateSpMarkdownPreview();
+}
+
+function replaceSpSelection(before, after = before, placeholder = 'texte') {
+    if (!spModalContenu) return;
+    const start = spModalContenu.selectionStart;
+    const end = spModalContenu.selectionEnd;
+    const selected = spModalContenu.value.slice(start, end) || placeholder;
+    const replacement = `${before}${selected}${after}`;
+    spModalContenu.setRangeText(replacement, start, end, 'select');
+    spModalContenu.focus();
+    spModalContenu.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+function prefixSpSelectedLines(prefix, fallback = 'élément') {
+    if (!spModalContenu) return;
+    const value = spModalContenu.value;
+    const start = spModalContenu.selectionStart;
+    const end = spModalContenu.selectionEnd;
+    const lineStart = value.lastIndexOf('\n', start - 1) + 1;
+    const lineEndIndex = value.indexOf('\n', end);
+    const lineEnd = lineEndIndex < 0 ? value.length : lineEndIndex;
+    const selected = value.slice(lineStart, lineEnd) || fallback;
+    const replacement = selected.split('\n').map(line => `${prefix}${line}`).join('\n');
+    spModalContenu.setRangeText(replacement, lineStart, lineEnd, 'select');
+    spModalContenu.focus();
+    spModalContenu.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+function handleSpMarkdownAction(action) {
+    if (action === 'bold') replaceSpSelection('**');
+    if (action === 'italic') replaceSpSelection('*');
+    if (action === 'heading') prefixSpSelectedLines('## ', 'Titre');
+    if (action === 'bullet') prefixSpSelectedLines('- ', 'Élément');
+    if (action === 'numbered') prefixSpSelectedLines('1. ', 'Élément');
+    if (action === 'quote') prefixSpSelectedLines('> ', 'Citation');
+    if (action === 'code') replaceSpSelection('`');
+    if (action === 'link') {
+        const start = spModalContenu.selectionStart;
+        const end = spModalContenu.selectionEnd;
+        const label = spModalContenu.value.slice(start, end) || 'texte du lien';
+        const url = window.prompt('Adresse du lien', 'https://');
+        if (url) replaceSpSelection(`[`, `](${url})`, label);
+    }
+}
+
 spModalContenu.addEventListener('input', () => autoResizeTextarea(spModalContenu));
+spModalContenu.addEventListener('input', updateSpMarkdownPreview);
 prModalContenu.addEventListener('input', () => autoResizeTextarea(prModalContenu));
+
+spMarkdownEditTab?.addEventListener('click', () => setSpMarkdownMode('edit'));
+spMarkdownPreviewTab?.addEventListener('click', () => setSpMarkdownMode('preview'));
+spMarkdownToolbar?.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-md-action]');
+    if (button) handleSpMarkdownAction(button.dataset.mdAction);
+});
 
 function openSpModal(filename = null, fromManage = false) {
     spEditingFilename = filename;
     _spFromManagePopup = fromManage;
     _editingAgentAvatar = null;
     _editingAgentMascot = null;
-    if (spModalAvatar) spModalAvatar.value = '';
-    if (spModalMascot) spModalMascot.value = '';
+    setSpMarkdownMode('edit');
+    populateAgentComboSelect();
     if (spModalMascotVisible) spModalMascotVisible.checked = false;
     if (filename) {
         spModalTitle.textContent = 'Modifier l\'agent';
@@ -7390,10 +7605,9 @@ function openSpModal(filename = null, fromManage = false) {
             if (data) {
                 spModalNom.value = data.nom;
                 spModalContenu.value = data.contenu;
-                _editingAgentAvatar = data.avatar || null;
-                _editingAgentMascot = data.mascotte || null;
-                spModalMascotVisible.checked = data.mascotteVisible !== false && !!data.mascotte;
-                renderAgentMediaPreview();
+                populateAgentComboSelect(data.comboId);
+                applySelectedAgentCombo(data.comboId);
+                spModalMascotVisible.checked = data.mascotteVisible !== false;
                 autoResizeTextarea(spModalContenu);
             }
         });
@@ -7403,7 +7617,7 @@ function openSpModal(filename = null, fromManage = false) {
         spModalNom.value = '';
         spModalContenu.value = '';
         spModalContenu.style.height = '';
-        renderAgentMediaPreview();
+        applySelectedAgentCombo('');
     }
     spModalOverlay.style.display = 'flex';
     spModalNom.focus();
@@ -7475,47 +7689,7 @@ spModalOptimize.addEventListener('click', async () => {
     }
 });
 
-spModalAvatar?.addEventListener('change', async () => {
-    const file = spModalAvatar.files?.[0];
-    if (!file) return;
-    try {
-        _editingAgentAvatar = { data: await readAvatarAsSquareDataUrl(file), mime: 'image/png', ratio: '1:1' };
-        renderAgentMediaPreview();
-    } catch (error) {
-        showModelAlert(error.message);
-    }
-});
-
-spModalMascot?.addEventListener('change', async () => {
-    const file = spModalMascot.files?.[0];
-    if (!file) return;
-    const data = await readFileAsDataUrl(file);
-    if (file.type === 'application/json' || file.name.toLowerCase().endsWith('.json')) {
-        try {
-            _editingAgentMascot = { type: 'lottie', data, animation: JSON.parse(await file.text()), name: file.name };
-        } catch {
-            showModelAlert('Ce fichier Lottie JSON est invalide.');
-            return;
-        }
-    } else {
-        _editingAgentMascot = { type: 'video', data, mime: file.type || 'video/webm', name: file.name };
-    }
-    spModalMascotVisible.checked = true;
-    renderAgentMediaPreview();
-});
-
-spModalAvatarClear?.addEventListener('click', () => {
-    _editingAgentAvatar = null;
-    if (spModalAvatar) spModalAvatar.value = '';
-    renderAgentMediaPreview();
-});
-
-spModalMascotClear?.addEventListener('click', () => {
-    _editingAgentMascot = null;
-    if (spModalMascot) spModalMascot.value = '';
-    if (spModalMascotVisible) spModalMascotVisible.checked = false;
-    renderAgentMediaPreview();
-});
+spModalCombo?.addEventListener('change', () => applySelectedAgentCombo(spModalCombo.value));
 
 spModalOverlay.addEventListener('click', (e) => {
     if (e.target === spModalOverlay) closeSpModal();
@@ -7531,12 +7705,14 @@ spModalSave.addEventListener('click', async () => {
     }
 
     const existingData = spEditingFilename ? await readSystemPrompt(spEditingFilename) : null;
+    const media = getComboMedia(spModalCombo?.value);
     const data = {
         nom,
         contenu,
-        avatar: _editingAgentAvatar,
-        mascotte: _editingAgentMascot,
-        mascotteVisible: !!_editingAgentMascot && spModalMascotVisible.checked,
+        comboId: media?.comboId || null,
+        avatar: media?.avatar || null,
+        mascotte: media?.mascotte || null,
+        mascotteVisible: !!media && spModalMascotVisible.checked,
         mascottePosition: existingData?.mascottePosition || null
     };
     const filename = spEditingFilename || nom.replace(/[^a-zA-Z0-9àâéèêëïîôùûüçÀÂÉÈÊËÏÎÔÙÛÜÇ _-]/g, '_') + '.json';

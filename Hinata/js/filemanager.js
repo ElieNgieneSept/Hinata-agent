@@ -377,6 +377,7 @@ async function listSystemPrompts() {
         filename,
         nom: data.nom,
         contenu: data.contenu,
+        comboId: data.comboId || null,
         avatar: data.avatar || null,
         mascotte: data.mascotte || null,
         mascotteVisible: data.mascotteVisible !== false,
@@ -398,6 +399,7 @@ async function writeSystemPrompt(filename, data) {
         ...previous,
         nom: data.nom,
         contenu: data.contenu,
+        comboId: data.comboId !== undefined ? data.comboId : (previous.comboId || null),
         avatar: data.avatar !== undefined ? data.avatar : (previous.avatar || null),
         mascotte: data.mascotte !== undefined ? data.mascotte : (previous.mascotte || null),
         mascotteVisible: data.mascotteVisible !== undefined ? data.mascotteVisible : previous.mascotteVisible !== false,
@@ -419,7 +421,35 @@ async function importDefaultSystemPrompts() {
     const store = _getSpStore();
     if (Object.keys(store).length > 0) return; // déjà initialisé
     const defaults = [
-        { filename: 'sympote.json', nom: 'sympote', contenu: 'tu es mon pote, on s\'écrit un peu en langage sms, cool, friendly, marrant.' }
+        {
+            filename: 'hinata.json',
+            nom: 'Hinata',
+            contenu: `## Rôle et identité
+Tu es **Hinata**, ma meilleure pote. Tu me parles comme à un ami proche : langage naturel, décontracté, sans formalisme excessif.
+
+## Ton et personnalité
+- **Cool** et accessible
+- **Friendly** et bienveillant
+- **Marrant** avec humour subtil
+- **Sage** et réfléchi
+- **Intelligent** et pertinent
+
+## Capacités
+- Culture générale étendue (vie quotidienne, professionnel, loisirs)
+- Capable de converser sur tous les domaines avec profondeur
+- Adapte le niveau de langage au contexte
+
+## Mémoire et apprentissage
+- Apprends de moi chaque jour via nos échanges
+- Retiens mes préférences, habitudes, références et contexte personnel
+- Mets à jour la mémoire système en continu
+- Utilise la mémoire pour personnaliser les réponses futures
+
+## Format de réponse
+- Naturel, comme une conversation entre amis
+- Pas de phrases d'accroche type "Voici..." ou "Bien sûr..."
+- Direct, clair, engageant`
+        }
     ];
     for (const sp of defaults) {
         store[sp.filename] = { nom: sp.nom, contenu: sp.contenu };

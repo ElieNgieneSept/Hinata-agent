@@ -840,14 +840,32 @@
 
     <!-- Modale Agent -->
     <div id="sp-modal-overlay" class="sp-modal-overlay" style="display:none">
-        <div class="sp-modal">
+        <div class="sp-modal agent-modal">
             <h3 id="sp-modal-title">Nouvel agent</h3>
             <label class="sp-modal-label" for="sp-modal-nom">Nom</label>
             <input type="text" id="sp-modal-nom" class="sp-modal-input" placeholder="Ex : Assistant technique" required>
             <label class="sp-modal-label" for="sp-modal-contenu">Contenu</label>
-            <div class="sp-modal-textarea-wrap">
+            <div class="sp-modal-editor" id="sp-modal-editor">
+                <div class="sp-markdown-tabs" role="tablist" aria-label="Mode d'édition du prompt">
+                    <button type="button" class="sp-markdown-tab active" id="sp-markdown-edit-tab" role="tab" aria-selected="true">Édition</button>
+                    <button type="button" class="sp-markdown-tab" id="sp-markdown-preview-tab" role="tab" aria-selected="false">Aperçu</button>
+                </div>
+                <div class="sp-markdown-toolbar" id="sp-markdown-toolbar" role="toolbar" aria-label="Mise en forme Markdown">
+                    <button type="button" data-md-action="bold" title="Gras">B</button>
+                    <button type="button" data-md-action="italic" title="Italique"><em>I</em></button>
+                    <button type="button" data-md-action="heading" title="Titre">H</button>
+                    <span class="sp-markdown-toolbar-separator" aria-hidden="true"></span>
+                    <button type="button" data-md-action="bullet" title="Liste à puces">•</button>
+                    <button type="button" data-md-action="numbered" title="Liste numérotée">1.</button>
+                    <button type="button" data-md-action="quote" title="Citation">❝</button>
+                    <span class="sp-markdown-toolbar-separator" aria-hidden="true"></span>
+                    <button type="button" data-md-action="code" title="Code">&lt;/&gt;</button>
+                    <button type="button" data-md-action="link" title="Lien">↗</button>
+                </div>
+                <div class="sp-modal-textarea-wrap">
                 <textarea id="sp-modal-contenu" class="sp-modal-textarea" rows="8" placeholder="Tu es un assistant..."
                     required></textarea>
+                    <div id="sp-markdown-preview" class="sp-markdown-preview" role="tabpanel" hidden></div>
                 <button id="sp-modal-optimize" class="sp-modal-enhance-inside"><svg width="12" height="12"
                         viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
                         stroke-linejoin="round">
@@ -858,34 +876,30 @@
                         <path d="M4 17v2" />
                         <path d="M5 18H3" />
                     </svg> Améliorer avec l'IA</button>
+                    </div>
             </div>
             <div class="agent-media-section">
                 <div class="agent-media-heading">Identité visuelle</div>
-                <div class="agent-media-grid">
+                <label class="sp-modal-label" for="sp-modal-combo">Combo avatar et mascotte</label>
+                <select id="sp-modal-combo" class="sp-modal-input agent-combo-select"></select>
+                <div class="agent-media-grid agent-combo-preview-grid">
                     <div class="agent-media-field">
-                        <label class="sp-modal-label" for="sp-modal-avatar">Avatar (image carrée)</label>
-                        <input type="file" id="sp-modal-avatar" accept="image/*" class="agent-media-input">
+                        <div class="sp-modal-label">Avatar</div>
                         <div id="sp-modal-avatar-preview" class="agent-avatar-preview" aria-live="polite">Aucun avatar
                         </div>
-                        <button type="button" id="sp-modal-avatar-clear" class="agent-media-clear">Retirer
-                            l'avatar</button>
                     </div>
                     <div class="agent-media-field">
-                        <label class="sp-modal-label" for="sp-modal-mascot">Mascotte animée</label>
-                        <input type="file" id="sp-modal-mascot"
-                            accept="video/webm,video/mp4,application/json,.webm,.json" class="agent-media-input">
+                        <div class="sp-modal-label">Mascotte</div>
                         <div id="sp-modal-mascot-preview" class="agent-mascot-preview" aria-live="polite">Aucune
                             mascotte</div>
-                        <button type="button" id="sp-modal-mascot-clear" class="agent-media-clear">Retirer la
-                            mascotte</button>
                     </div>
                 </div>
                 <label class="agent-mascot-toggle" for="sp-modal-mascot-visible">
                     <input type="checkbox" id="sp-modal-mascot-visible">
                     Afficher la mascotte animée dans le chat
                 </label>
-                <p class="agent-media-hint">Formats acceptés : WebM ou Lottie JSON. Les médias sont enregistrés
-                    localement dans votre navigateur.</p>
+                <p class="agent-media-hint">Les identités visuelles sont fournies par Hinata et ne peuvent pas être
+                    remplacées par des fichiers personnels.</p>
             </div>
             <div class="sp-modal-actions">
                 <button id="sp-modal-delete" class="cat-modal-delete-btn" style="display:none">Supprimer</button>
