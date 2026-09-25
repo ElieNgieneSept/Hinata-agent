@@ -10,7 +10,11 @@
   "scripts": {
     "start": "electron .",
     "dev": "electron .",
-    "dist": "electron-builder --mac"
+    "dist": "npm run dist:mac",
+    "dist:mac": "electron-builder --mac --config.directories.output=Installateurs/MaOS",
+    "dist:win": "electron-builder --win nsis --config.directories.output=Installateurs/Windows",
+    "dist:web": "node scripts/build-web.js",
+    "dist:all": "npm run dist:web && npm run dist:mac && npm run dist:win"
   },
   "devDependencies": {
     "electron": "^38.1.0",
@@ -28,6 +32,9 @@
     "mac": {
       "category": "public.app-category.productivity",
       "target": "dmg"
+    },
+    "win": {
+      "target": "nsis"
     }
   }
 }

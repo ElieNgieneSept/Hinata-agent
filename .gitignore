@@ -5,6 +5,7 @@ node_modules/
 # dist/ est autorisé pour distribuer le .dmg
 build/
 out/
+Installateurs/*
 *.dmg
 *.app
 *.pkg

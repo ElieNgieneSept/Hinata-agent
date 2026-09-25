@@ -602,6 +602,16 @@ La version actuelle regroupe les améliorations de l'identité visuelle des agen
 
 La génération de l'installateur macOS reste `npm run dist` et produit le fichier `.dmg` dans `dist/`. Aucun secret ne doit être ajouté au dépôt.
 
+### 28. Formats de distribution
+
+Les exports sont maintenant organisés sous `Installateurs/` :
+
+- `Installateurs/MaOS/` : DMG et bundle macOS générés par `npm run dist:mac` ;
+- `Installateurs/Navigateur/` : ZIP statique généré par `npm run dist:web`, avec `index.html` à la racine après décompression ;
+- `Installateurs/Windows/` : installateur NSIS `.exe` généré par `npm run dist:win`.
+
+Les commandes sont déclarées dans `package.json`. `npm run dist:all` exécute les trois builds. Le ZIP Web exclut `Hinata/data/`, `Hinata/historique/` et les fichiers `.DS_Store` afin de ne pas distribuer de données locales ou de fichiers de développement. Les builds desktop peuvent être non signés en l'absence de certificat Apple ou Windows.
+
 ## Règles de reprise pour un autre agent
 
 1. Lire ce fichier avant toute modification.
