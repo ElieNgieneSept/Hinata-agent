@@ -4146,28 +4146,6 @@ if (inputHint) {
     inputHint.textContent = 'MAJ (Shift) + Entrée pour un saut de ligne';
 }
 
-// Centrer le hint sur le même axe visuel que les boutons centraux de la ligne 2 :
-// le milieu entre le bord droit du groupe gauche (icônes) et le bord gauche du groupe droit (micro).
-function alignInputHint() {
-    if (!inputHint) return;
-    inputHint.style.paddingLeft = '0';
-    inputHint.style.paddingRight = '0';
-    const row = document.querySelector('.input-row');
-    const left = document.querySelector('.input-line-2-left');
-    const right = document.querySelector('.input-line-2-right');
-    if (!row || !left || !right) return;
-    const rowRect = row.getBoundingClientRect();
-    const leftRect = left.getBoundingClientRect();
-    const rightRect = right.getBoundingClientRect();
-    // Padding = écart entre le bord intérieur du groupe et le bord du row,
-    // ce qui aligne le centre du hint sur le centre de la zone libre.
-    const leftPad = leftRect.right - rowRect.left;
-    const rightPad = rowRect.right - rightRect.left;
-    inputHint.style.paddingLeft = Math.max(0, leftPad) + 'px';
-    inputHint.style.paddingRight = Math.max(0, rightPad) + 'px';
-}
-setTimeout(alignInputHint, 100);
-window.addEventListener('resize', alignInputHint);
 updatePromptToolbar();
 
 // Capturer la position du clic pour positionner "Insérer un prompt" au-dessus du curseur

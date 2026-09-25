@@ -3511,7 +3511,7 @@ body.dark #cost-info {
     align-items: flex-start;
     gap: 8px;
     width: calc(100% - 64px);
-    max-width: 800px;
+    max-width: 890px;
     margin: 0 auto;
     padding: 6px 12px 0;
     color: var(--text-secondary);
@@ -3525,7 +3525,6 @@ body.dark #cost-info {
     justify-content: flex-start;
     gap: 8px;
     width: 100%;
-    padding-left: 82px;
 
     .container{
         display: flex;
@@ -3667,20 +3666,23 @@ body.dark #cost-info {
     display: flex;
     align-items: center;
     gap: 8px;
-    width: 100%;
-    max-width: 800px;
+    flex: 0 0 auto;
+    width: 874px;
+    min-width: max-content;
+    max-width: calc(100vw - 64px);
 }
 
 .input-hint {
     display: block;
-    text-align: center;
+    text-align: right;
     font-size: 0.68rem;
     color: var(--text-secondary);
     opacity: 0.5;
     padding-top: 3px;
     user-select: none;
-    width: 100%;
-    max-width: 800px;
+    width: 874px;
+    min-width: max-content;
+    max-width: calc(100vw - 64px);
     box-sizing: border-box;
 }
 
@@ -3703,7 +3705,7 @@ body.dark #cost-info {
     display: flex;
     flex-direction: column;
     flex: 1;
-    min-width: 0;
+    min-width: max-content;
     gap: 2px;
     position: relative;
 }
@@ -3723,6 +3725,7 @@ body.dark #cost-info {
     justify-content: space-between;
     min-height: 30px;
     position: relative;
+    flex-wrap: nowrap;
 }
 
 .input-line-2 {
@@ -3741,8 +3744,8 @@ body.dark #cost-info {
     align-items: center;
     gap: 6px;
     justify-content: center;
-    flex: 1 1 auto;
-    min-width: 0;
+    flex: 0 0 auto;
+    min-width: max-content;
     position: relative;
     pointer-events: auto;
 }
@@ -3815,6 +3818,42 @@ body.dark #cost-info {
     padding: 4px 10px;
     border-radius: 16px;
     transition: opacity 0.2s ease, transform 0.15s ease;
+}
+
+/* Les libellés des actions doivent conserver leur largeur sur desktop.
+   Sinon le centre se contracte et les boutons semblent se chevaucher avec
+   les groupes gauche et droit de la ligne. */
+.input-line-2-center .prompt-toolbar-btn {
+    flex: 0 0 auto;
+}
+
+@media (max-width: 900px) {
+    .input-row {
+        width: 100%;
+        max-width: calc(100vw - 32px);
+    }
+
+    .input-hint {
+        width: 100%;
+        min-width: 0;
+        max-width: calc(100vw - 32px);
+    }
+
+    .input-content {
+        min-width: 0;
+    }
+
+    .input-line-2 {
+        flex-wrap: wrap;
+        row-gap: 4px;
+    }
+
+    .input-line-2-center {
+        flex: 1 1 100%;
+        min-width: 0;
+        order: 3;
+        justify-content: flex-start;
+    }
 }
 
 /* Micro en mode stop (streaming) */

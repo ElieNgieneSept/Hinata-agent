@@ -633,3 +633,11 @@ La gestion des projets, le sélecteur rapide d'agents, le mode Work avec arbores
 ## Prochaine direction possible
 
 Continuer à améliorer les projets pour qu'ils deviennent des espaces de travail plus complets, par exemple avec des prompts dédiés, des agents par défaut, des fichiers de projet et des réglages propres à chaque projet. Toute évolution doit préserver les conversations sans projet et la compatibilité des anciennes données. Pour le desktop, continuer avec `npm start` pendant le développement et ne générer le `.app` ou le `.dmg` qu'au moment de la distribution.
+
+## 29. Largeur du composer et alignement du hint
+
+- `.input-row` utilise une largeur de base de `874px` et peut s'agrandir selon la largeur intrinsèque des actions affichées.
+- Les boutons « Améliorer le prompt » et « Enregistrer le prompt » conservent leur largeur afin de ne pas se chevaucher avec les actions Work, insertion et microphone.
+- Sous `900px`, les actions du composer peuvent revenir à la ligne pour éviter tout débordement horizontal.
+- Le texte `MAJ (Shift) + Entrée pour un saut de ligne` est aligné à droite sous le composer, avec le même bord droit que la barre de saisie et une adaptation responsive.
+- L'ancien calcul JavaScript de centrage du hint a été supprimé ; l'alignement est désormais entièrement contrôlé par CSS.
