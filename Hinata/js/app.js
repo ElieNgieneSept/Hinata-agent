@@ -208,6 +208,7 @@ let _editingAgentAvatar = null;
 let _editingAgentMascot = null;
 let _agentMascotSessionHidden = false;
 let _agentMascotUsesDefaultPosition = false;
+let _mascotRenderToken = 0;
 
 const DEFAULT_AGENT_COMBO_ID = 'combo-01';
 const AGENT_COMBOS = Object.freeze([
@@ -446,9 +447,9 @@ function positionMascotWidget(position) {
         const inputRect = chatInputWrapper?.getBoundingClientRect();
         const defaultLeft = inputRect
             ? inputRect.right - mascotWidth
-            : window.innerWidth - mascotWidth - 24;
+            : window.innerWidth - mascotWidth - 34;
         const defaultTop = inputRect
-            ? inputRect.top - mascotHeight - 12
+            ? inputRect.top - mascotHeight + 26
             : window.innerHeight - mascotHeight - 120;
         agentMascotWidget.style.left = `${Math.min(Math.max(8, defaultLeft), maxLeft)}px`;
         agentMascotWidget.style.top = `${Math.min(Math.max(8, defaultTop), maxTop)}px`;
@@ -458,6 +459,7 @@ function positionMascotWidget(position) {
 }
 
 async function updateSelectedAgentVisuals(filename = chatAgentSelect?.value || '') {
+    const renderToken = ++_mascotRenderToken;
     destroyMascotWidget();
     if (chatAgentAvatar) {
         chatAgentAvatar.hidden = true;
@@ -468,6 +470,7 @@ async function updateSelectedAgentVisuals(filename = chatAgentSelect?.value || '
         return;
     }
     const agent = await readSystemPrompt(filename);
+    if (renderToken !== _mascotRenderToken) return;
     if (!agent) return;
     if (chatAgentAvatar && agent.avatar?.data) {
         chatAgentAvatar.src = agent.avatar.data;
@@ -477,8 +480,8 @@ async function updateSelectedAgentVisuals(filename = chatAgentSelect?.value || '
         if (agentMascotWidget) agentMascotWidget.hidden = true;
         return;
     }
-    positionMascotWidget(agent.mascottePosition);
     if (agent.mascotte.type === 'lottie' && window.lottie) {
+        if (renderToken !== _mascotRenderToken) return;
         agentMascotContent._lottieAnimation = window.lottie.loadAnimation({
             container: agentMascotContent,
             renderer: 'svg',
@@ -486,16 +489,24 @@ async function updateSelectedAgentVisuals(filename = chatAgentSelect?.value || '
             autoplay: true,
             animationData: agent.mascotte.animation
         });
+        agentMascotWidget.hidden = false;
+        requestAnimationFrame(() => positionMascotWidget(agent.mascottePosition));
     } else if (agent.mascotte.type !== 'lottie') {
+        if (renderToken !== _mascotRenderToken) return;
+        agentMascotContent.querySelectorAll('video').forEach(video => video.remove());
         const video = document.createElement('video');
         video.src = agent.mascotte.data;
         video.autoplay = true;
         video.loop = true;
         video.muted = true;
         video.playsInline = true;
+        video.addEventListener('loadedmetadata', () => {
+            positionMascotWidget(agent.mascottePosition);
+        }, { once: true });
         agentMascotContent.appendChild(video);
+        agentMascotWidget.hidden = false;
+        requestAnimationFrame(() => positionMascotWidget(agent.mascottePosition));
     }
-    agentMascotWidget.hidden = false;
 }
 
 function syncChatAgentSelect() {

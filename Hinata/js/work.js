@@ -89,8 +89,8 @@
         if (status) status.textContent = rootHandle ? `${rootHandle.name} · ${settings.write ? 'lecture et écriture activées' : 'lecture seule'}` : 'Aucun dossier partagé';
         if (button) button.classList.toggle('active', !!rootHandle && settings.enabled);
         if (label) {
-            label.hidden = !(rootHandle && settings.enabled);
-            label.textContent = rootHandle?.name || '';
+            label.hidden = false;
+            label.textContent = 'Donner accès à un dossier';
             if (rootHandle?.name) button.title = `Dossier Work : ${rootHandle.name}`;
         }
         const write = document.getElementById('work-write-toggle');
