@@ -3667,7 +3667,7 @@ body.dark #cost-info {
     align-items: center;
     gap: 8px;
     flex: 0 0 auto;
-    width: 874px;
+    width: 922px;
     min-width: max-content;
     max-width: calc(100vw - 64px);
 }
